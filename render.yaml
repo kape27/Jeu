@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: jeu-des-points-signaling
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node signaling-server.js
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: WS_PATH
+        value: /ws
