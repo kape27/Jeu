@@ -2313,7 +2313,7 @@
                     <div id="advancedWebrtc" style="display: none; text-align: left; margin-top: 0.8rem;">
                         <label for="signalingUrlInput" style="font-size: 0.85rem; color: var(--text-muted);">Serveur
                             (wss:// ou ws://)</label>
-                        <input type="text" id="signalingUrlInput" placeholder="ws://localhost:8080/ws"
+                        <input type="text" id="signalingUrlInput" placeholder="wss://jeu-points.onrender.com/ws"
                             style="padding: 0.4rem; font-size: 0.85rem;" oninput="persistSignalingUrlFromInput()">
                     </div>
                 </div>
@@ -5722,7 +5722,7 @@
                 return 'ws://localhost:8080/ws';
             }
             if (hostname.endsWith('.netlify.app') || hostname.endsWith('.vercel.app')) {
-                return 'wss://your-signaling-server.example.com/ws';
+                return 'wss://jeu-points.onrender.com/ws';
             }
             if (window.location?.host) {
                 const isSecure = window.location.protocol === 'https:';
