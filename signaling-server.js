@@ -4,9 +4,18 @@ const { WebSocketServer, WebSocket } = require('ws');
 const PORT = Number.parseInt(process.env.PORT || '8080', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const WS_PATH = process.env.WS_PATH || '/ws';
-const MAX_ROOM_SIZE = 2;
+const MAX_PLAYERS = clampNumber(
+    Number.parseInt(process.env.MAX_PLAYERS || process.env.MAX_ROOM_SIZE || '4', 10),
+    2,
+    4
+);
 
 const rooms = new Map();
+
+function clampNumber(value, min, max) {
+    if (!Number.isFinite(value)) return min;
+    return Math.min(max, Math.max(min, Math.trunc(value)));
+}
 
 function sanitizeRoomCode(raw) {
     return String(raw || '')
@@ -15,65 +24,157 @@ function sanitizeRoomCode(raw) {
         .slice(0, 6);
 }
 
+function sanitizePeerId(raw) {
+    return String(raw || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '')
+        .slice(0, 24);
+}
+
+function normalizeMaxPeers(rawValue) {
+    return clampNumber(Number.parseInt(rawValue, 10), 2, MAX_PLAYERS);
+}
+
 function ensureRoom(code) {
     if (!rooms.has(code)) {
         rooms.set(code, {
             host: null,
-            guest: null
+            guests: new Map(),
+            maxPeers: MAX_PLAYERS,
+            nextGuestIndex: 1
         });
     }
     return rooms.get(code);
 }
 
+function isSocketOpen(ws) {
+    return Boolean(ws && ws.readyState === WebSocket.OPEN);
+}
+
+function listRoomPeerIds(room) {
+    const ids = [];
+    if (isSocketOpen(room.host)) {
+        ids.push('host');
+    }
+    for (const [peerId, socket] of room.guests.entries()) {
+        if (isSocketOpen(socket)) {
+            ids.push(peerId);
+        }
+    }
+    return ids;
+}
+
 function getPeerCount(room) {
-    let count = 0;
-    if (room.host && room.host.readyState === WebSocket.OPEN) {
-        count += 1;
-    }
-    if (room.guest && room.guest.readyState === WebSocket.OPEN) {
-        count += 1;
-    }
-    return count;
+    return listRoomPeerIds(room).length;
 }
 
 function send(ws, payload) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!isSocketOpen(ws)) return;
     ws.send(JSON.stringify(payload));
 }
 
-function getCounterpart(room, role) {
-    if (!room) return null;
-    return role === 'host' ? room.guest : room.host;
+function sendJoined(ws, roomCode, room) {
+    send(ws, {
+        type: 'joined',
+        room: roomCode,
+        role: ws.role,
+        peerId: ws.peerId,
+        peerCount: getPeerCount(room),
+        maxPeers: room.maxPeers,
+        participants: listRoomPeerIds(room)
+    });
+}
+
+function findGuestIdBySocket(room, targetSocket) {
+    for (const [peerId, socket] of room.guests.entries()) {
+        if (socket === targetSocket) {
+            return peerId;
+        }
+    }
+    return null;
+}
+
+function pruneClosedGuests(room) {
+    for (const [peerId, socket] of room.guests.entries()) {
+        if (!isSocketOpen(socket)) {
+            room.guests.delete(peerId);
+        }
+    }
+}
+
+function assignGuestId(room, preferredId = '') {
+    const preferred = sanitizePeerId(preferredId);
+    if (preferred && preferred !== 'host' && !room.guests.has(preferred)) {
+        return preferred;
+    }
+
+    let safety = 0;
+    while (safety < 10000) {
+        const candidate = `guest-${room.nextGuestIndex}`;
+        room.nextGuestIndex += 1;
+        if (!room.guests.has(candidate)) {
+            return candidate;
+        }
+        safety += 1;
+    }
+    return `guest-${Date.now()}`;
 }
 
 function releaseSocket(ws) {
     const roomCode = ws.roomCode;
     const role = ws.role;
-    if (!roomCode || !role) return;
+    const peerId = ws.peerId;
+    if (!roomCode || !role || !peerId) return;
 
     const room = rooms.get(roomCode);
-    if (!room) return;
+    if (!room) {
+        ws.roomCode = null;
+        ws.role = null;
+        ws.peerId = null;
+        return;
+    }
+
+    pruneClosedGuests(room);
 
     if (role === 'host' && room.host === ws) {
         room.host = null;
-    } else if (role === 'guest' && room.guest === ws) {
-        room.guest = null;
-    }
+        for (const guestSocket of room.guests.values()) {
+            send(guestSocket, {
+                type: 'peer-left',
+                room: roomCode,
+                fromId: 'host',
+                peerId: 'host',
+                participants: listRoomPeerIds(room)
+            });
+        }
+    } else if (role === 'guest') {
+        const existing = room.guests.get(peerId);
+        if (existing === ws) {
+            room.guests.delete(peerId);
+        } else {
+            const resolvedId = findGuestIdBySocket(room, ws);
+            if (resolvedId) {
+                room.guests.delete(resolvedId);
+            }
+        }
 
-    const counterpart = getCounterpart(room, role);
-    if (counterpart) {
-        send(counterpart, {
+        send(room.host, {
             type: 'peer-left',
-            room: roomCode
+            room: roomCode,
+            fromId: peerId,
+            peerId,
+            participants: listRoomPeerIds(room)
         });
     }
 
-    if (!room.host && !room.guest) {
+    pruneClosedGuests(room);
+    if (!isSocketOpen(room.host) && room.guests.size === 0) {
         rooms.delete(roomCode);
     }
 
     ws.roomCode = null;
     ws.role = null;
+    ws.peerId = null;
 }
 
 function handleJoin(ws, message) {
@@ -92,35 +193,90 @@ function handleJoin(ws, message) {
     releaseSocket(ws);
 
     const room = ensureRoom(roomCode);
-    const slot = room[role];
+    pruneClosedGuests(room);
 
-    if (slot && slot !== ws && slot.readyState === WebSocket.OPEN) {
-        send(ws, { type: 'error', message: `Le role ${role} est deja occupe.` });
+    if (role === 'host') {
+        if (isSocketOpen(room.host) && room.host !== ws) {
+            send(ws, { type: 'error', message: 'Le role host est deja occupe.' });
+            return;
+        }
+
+        room.maxPeers = normalizeMaxPeers(message.maxPeers || room.maxPeers || MAX_PLAYERS);
+        room.host = ws;
+        ws.roomCode = roomCode;
+        ws.role = 'host';
+        ws.peerId = 'host';
+
+        sendJoined(ws, roomCode, room);
+        for (const guestSocket of room.guests.values()) {
+            send(guestSocket, {
+                type: 'peer-ready',
+                room: roomCode,
+                fromId: 'host',
+                peerId: 'host',
+                participants: listRoomPeerIds(room)
+            });
+        }
+        return;
+    }
+
+    if (!isSocketOpen(room.host)) {
+        send(ws, { type: 'error', message: 'Hote indisponible.' });
+        if (room.guests.size === 0) {
+            rooms.delete(roomCode);
+        }
         return;
     }
 
     const peerCountBefore = getPeerCount(room);
-    if (peerCountBefore >= MAX_ROOM_SIZE && slot !== ws) {
+    if (peerCountBefore >= room.maxPeers) {
         send(ws, { type: 'error', message: 'Session complete.' });
         return;
     }
 
-    room[role] = ws;
+    const assignedPeerId = assignGuestId(room, message.peerId);
+    room.guests.set(assignedPeerId, ws);
     ws.roomCode = roomCode;
-    ws.role = role;
+    ws.role = 'guest';
+    ws.peerId = assignedPeerId;
 
-    const peerCount = getPeerCount(room);
-    send(ws, {
-        type: 'joined',
+    sendJoined(ws, roomCode, room);
+    send(room.host, {
+        type: 'peer-ready',
         room: roomCode,
-        role,
-        peerCount
+        fromId: assignedPeerId,
+        peerId: assignedPeerId,
+        participants: listRoomPeerIds(room)
     });
+    send(ws, {
+        type: 'peer-ready',
+        room: roomCode,
+        fromId: 'host',
+        peerId: 'host',
+        participants: listRoomPeerIds(room)
+    });
+}
 
-    if (room.host && room.guest) {
-        send(room.host, { type: 'peer-ready', room: roomCode });
-        send(room.guest, { type: 'peer-ready', room: roomCode });
+function resolveSignalTarget(room, sourceSocket, targetId) {
+    if (!room) return null;
+    const sourceRole = sourceSocket.role;
+
+    if (sourceRole === 'host') {
+        const normalizedTarget = sanitizePeerId(targetId);
+        if (!normalizedTarget || normalizedTarget === 'host') return null;
+        const guestSocket = room.guests.get(normalizedTarget);
+        if (!isSocketOpen(guestSocket)) return null;
+        return { socket: guestSocket, peerId: normalizedTarget };
     }
+
+    if (sourceRole === 'guest') {
+        if (!isSocketOpen(room.host)) return null;
+        const normalizedTarget = sanitizePeerId(targetId || 'host');
+        if (normalizedTarget && normalizedTarget !== 'host') return null;
+        return { socket: room.host, peerId: 'host' };
+    }
+
+    return null;
 }
 
 function handleSignal(ws, message) {
@@ -136,16 +292,20 @@ function handleSignal(ws, message) {
         return;
     }
 
-    const counterpart = getCounterpart(room, ws.role);
-    if (!counterpart || counterpart.readyState !== WebSocket.OPEN) {
-        send(ws, { type: 'error', message: 'Adversaire non connecte.' });
+    pruneClosedGuests(room);
+
+    const target = resolveSignalTarget(room, ws, message.targetId);
+    if (!target) {
+        send(ws, { type: 'error', message: 'Cible de signalisation indisponible.' });
         return;
     }
 
-    send(counterpart, {
+    send(target.socket, {
         type: 'signal',
         room: roomCode,
-        fromRole: ws.role,
+        fromId: ws.peerId,
+        peerId: ws.peerId,
+        toId: target.peerId,
         payload: message.payload || null
     });
 }
@@ -177,8 +337,12 @@ function handleClientMessage(ws, rawMessage) {
 
 const server = http.createServer((req, res) => {
     if (req.url === '/health') {
+        let clients = 0;
+        for (const room of rooms.values()) {
+            clients += getPeerCount(room);
+        }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
+        res.end(JSON.stringify({ ok: true, rooms: rooms.size, clients, maxPlayers: MAX_PLAYERS }));
         return;
     }
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -194,6 +358,7 @@ wss.on('connection', (ws) => {
     ws.isAlive = true;
     ws.roomCode = null;
     ws.role = null;
+    ws.peerId = null;
 
     ws.on('pong', () => {
         ws.isAlive = true;
