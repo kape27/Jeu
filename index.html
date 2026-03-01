@@ -499,6 +499,182 @@
             height: 0;
             display: none;
         }
+
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        .home-screen {
+            padding-top: max(0px, var(--safe-top));
+        }
+
+        .home-header {
+            padding-left: clamp(14px, 5vw, 24px);
+            padding-right: clamp(14px, 5vw, 24px);
+            padding-top: clamp(8px, 2.2vh, 16px);
+            padding-bottom: clamp(8px, 2.2vh, 14px);
+        }
+
+        .home-header-spacer,
+        .home-header-btn {
+            width: clamp(42px, 11vw, 48px);
+            height: clamp(42px, 11vw, 48px);
+        }
+
+        .home-header-btn {
+            border-radius: clamp(12px, 3.6vw, 16px);
+        }
+
+        .home-main {
+            width: min(100%, 430px);
+            padding-left: clamp(14px, 5vw, 30px);
+            padding-right: clamp(14px, 5vw, 30px);
+            padding-top: clamp(4px, 1.4vh, 12px);
+            padding-bottom: calc(clamp(14px, 2.6vh, 26px) + var(--safe-bottom));
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: clamp(10px, 2.5vh, 22px);
+        }
+
+        .home-brand {
+            margin-top: 0;
+            margin-bottom: 0;
+            gap: clamp(10px, 2.4vh, 20px);
+        }
+
+        .home-logo {
+            gap: clamp(10px, 3vw, 24px);
+            padding: clamp(8px, 2.5vw, 16px);
+        }
+
+        .home-logo-dot {
+            width: clamp(14px, 4.8vw, 20px);
+            height: clamp(14px, 4.8vw, 20px);
+        }
+
+        .home-logo-ring {
+            inset: calc(clamp(8px, 2.5vw, 16px) * -0.25);
+        }
+
+        .home-title {
+            font-size: clamp(2rem, 9.2vw, 3rem);
+            line-height: 1.02;
+            letter-spacing: -0.03em;
+            text-wrap: balance;
+        }
+
+        .home-subtitle {
+            margin-top: clamp(6px, 1.6vh, 12px);
+            font-size: clamp(0.58rem, 2.55vw, 0.78rem);
+            letter-spacing: clamp(0.2em, 0.8vw, 0.32em);
+        }
+
+        .home-mode-list {
+            gap: clamp(10px, 2.2vh, 16px);
+        }
+
+        .home-mode-btn {
+            height: clamp(60px, 9.6vh, 74px);
+            border-radius: clamp(18px, 6vw, 24px);
+            padding-left: clamp(16px, 5.5vw, 28px);
+            padding-right: clamp(16px, 5.5vw, 28px);
+        }
+
+        .home-mode-icon {
+            font-size: clamp(22px, 6.8vw, 28px);
+        }
+
+        .home-mode-title {
+            font-size: clamp(1rem, 4.7vw, 1.13rem);
+            line-height: 1.1;
+        }
+
+        .home-mode-chevron {
+            font-size: clamp(18px, 5vw, 22px);
+        }
+
+        .home-mode-badge {
+            height: clamp(18px, 3.2vh, 22px);
+            border-radius: 9999px;
+            font-size: clamp(8px, 2vw, 9px);
+            padding-inline: clamp(8px, 2.5vw, 12px);
+        }
+
+        .home-shortcuts {
+            margin-top: 0;
+            gap: clamp(12px, 5vw, 38px);
+            width: 100%;
+            justify-content: space-evenly;
+        }
+
+        .home-shortcut-tile {
+            width: clamp(48px, 13vw, 56px);
+            height: clamp(48px, 13vw, 56px);
+            border-radius: clamp(12px, 3.8vw, 16px);
+        }
+
+        .home-shortcut-icon {
+            font-size: clamp(22px, 6vw, 28px);
+        }
+
+        .home-shortcut-label {
+            font-size: clamp(0.5rem, 2.3vw, 0.64rem);
+            letter-spacing: clamp(0.09em, 0.5vw, 0.18em);
+        }
+
+        @media (max-height: 760px) {
+            .home-main {
+                gap: 10px;
+            }
+
+            .home-subtitle {
+                opacity: 0.72;
+            }
+
+            .home-mode-btn {
+                height: clamp(56px, 8.8vh, 66px);
+            }
+
+            .home-mode-badge {
+                display: none;
+            }
+        }
+
+        @media (max-height: 660px) {
+            .home-brand {
+                gap: 8px;
+            }
+
+            .home-subtitle {
+                display: none;
+            }
+
+            .home-shortcuts {
+                gap: 10px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .home-main {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            .home-mode-btn {
+                padding-left: 14px;
+                padding-right: 14px;
+            }
+
+            .home-mode-title {
+                font-size: 0.95rem;
+            }
+
+            .home-shortcuts {
+                gap: 8px;
+            }
+        }
         
     </style>
 </head>
@@ -506,7 +682,7 @@
 <body
     class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased overflow-hidden selection:bg-primary/30">
 
-    <div class="relative flex h-screen w-full flex-col overflow-hidden">
+    <div class="relative flex h-[100dvh] w-full flex-col overflow-hidden">
         <!-- Global background elements -->
         <div class="absolute inset-0 grid-bg pointer-events-none opacity-40 dark:opacity-20 z-0"></div>
         <div
@@ -555,100 +731,98 @@
         <button id="themeToggle" class="hidden"><svg id="themeIcon"></svg></button>
 
         <!-- SCREEN 1: MAIN MENU -->
-        <div id="screenMainMenu" class="relative z-10 flex flex-1 flex-col w-full h-full">
-            <header class="relative z-20 flex items-center justify-between px-6 pt-14 pb-4 shrink-0">
-                <div class="w-12 h-12"></div>
+        <div id="screenMainMenu" class="home-screen relative z-10 flex flex-1 flex-col w-full h-full">
+            <header class="home-header relative z-20 flex items-center justify-between shrink-0">
+                <div class="home-header-spacer"></div>
                 <div class="flex gap-3">
                     <button
-                        class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform"
+                        class="home-header-btn flex items-center justify-center bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform"
                         onclick="showRules()">
-                        <span class="material-symbols-outlined text-[28px]">description</span>
+                        <span class="material-symbols-outlined text-[26px]">description</span>
                     </button>
                     <button
-                        class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform"
+                        class="home-header-btn flex items-center justify-center bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform"
                         onclick="document.documentElement.classList.toggle('dark')">
-                        <span class="material-symbols-outlined text-[28px]">dark_mode</span>
+                        <span class="material-symbols-outlined text-[26px]">dark_mode</span>
                     </button>
                 </div>
             </header>
 
-            <main
-                class="flex-1 flex flex-col items-center justify-start pt-6 md:pt-10 px-8 pb-12 overflow-hidden w-full max-w-md mx-auto">
-                <div class="mt-1 md:mt-3 mb-14 flex flex-col items-center gap-6">
-                    <div class="relative overflow-visible grid grid-cols-2 gap-6 p-4">
-                        <div class="h-5 w-5 rounded-full bg-primary shadow-[0_0_20px_rgba(19,127,236,0.8)]"></div>
-                        <div class="h-5 w-5 rounded-full bg-slate-200 dark:bg-slate-800"></div>
-                        <div class="h-5 w-5 rounded-full bg-slate-200 dark:bg-slate-800"></div>
-                        <div class="h-5 w-5 rounded-full bg-primary shadow-[0_0_20px_rgba(19,127,236,0.8)]"></div>
-                        <div class="absolute -inset-1.5 border-2 border-primary/30 rounded-3xl"></div>
+            <main class="home-main flex-1 overflow-hidden mx-auto">
+                <div class="home-brand flex flex-col items-center">
+                    <div class="home-logo relative overflow-visible grid grid-cols-2">
+                        <div class="home-logo-dot rounded-full bg-primary shadow-[0_0_20px_rgba(19,127,236,0.8)]"></div>
+                        <div class="home-logo-dot rounded-full bg-slate-200 dark:bg-slate-800"></div>
+                        <div class="home-logo-dot rounded-full bg-slate-200 dark:bg-slate-800"></div>
+                        <div class="home-logo-dot rounded-full bg-primary shadow-[0_0_20px_rgba(19,127,236,0.8)]"></div>
+                        <div class="home-logo-ring absolute border-2 border-primary/30 rounded-3xl"></div>
                     </div>
                     <div class="text-center">
-                        <h1 class="text-5xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        <h1 class="home-title font-bold text-slate-900 dark:text-white">
                             Jeu des <span class="text-primary">Points</span>
                         </h1>
-                        <p
-                            class="mt-3 text-xs font-bold text-slate-500 dark:text-slate-400 tracking-[0.3em] uppercase opacity-80">
+                        <p class="home-subtitle font-bold text-slate-500 dark:text-slate-400 uppercase opacity-80">
                             Stratégie sur Grille
                         </p>
                     </div>
                 </div>
 
-                <div class="flex w-full flex-col gap-4">
+                <div class="home-mode-list flex w-full flex-col">
                     <button onclick="selectModeAndGoSetup('2players')"
-                        class="group relative flex h-[72px] w-full items-center justify-between overflow-hidden rounded-[24px] bg-primary px-7 text-white shadow-xl shadow-primary/30 active:scale-95 transition-all">
+                        class="home-mode-btn group relative flex w-full items-center justify-between overflow-hidden bg-primary text-white shadow-xl shadow-primary/30 active:scale-95 transition-all">
                         <div class="flex items-center gap-4">
-                            <span class="material-symbols-outlined text-[28px]">groups</span>
-                            <span class="text-lg font-bold">Partie Locale</span>
+                            <span class="home-mode-icon material-symbols-outlined">groups</span>
+                            <span class="home-mode-title font-bold">Partie Locale</span>
                         </div>
-                        <span class="material-symbols-outlined text-xl opacity-60">chevron_right</span>
+                        <span class="home-mode-chevron material-symbols-outlined opacity-60">chevron_right</span>
                     </button>
 
                     <button onclick="selectModeAndGoSetup('ai')"
-                        class="group relative flex h-[72px] w-full items-center justify-between overflow-hidden rounded-[24px] bg-white dark:bg-slate-800/80 px-7 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700/50 shadow-lg active:scale-95 transition-all">
+                        class="home-mode-btn group relative flex w-full items-center justify-between overflow-hidden bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700/50 shadow-lg active:scale-95 transition-all">
                         <div class="flex items-center gap-4">
-                            <span class="material-symbols-outlined text-[28px] text-primary">smart_toy</span>
-                            <span class="text-lg font-bold">Contre IA</span>
+                            <span class="home-mode-icon material-symbols-outlined text-primary">smart_toy</span>
+                            <span class="home-mode-title font-bold">Contre IA</span>
                         </div>
                         <span
-                            class="material-symbols-outlined text-xl opacity-30 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                            class="home-mode-chevron material-symbols-outlined opacity-30 group-hover:opacity-100 transition-opacity">chevron_right</span>
                     </button>
 
                     <button onclick="selectModeAndGoSetup('bluetooth')"
-                        class="group relative flex h-[72px] w-full items-center justify-between overflow-hidden rounded-[24px] bg-white dark:bg-slate-800/80 px-7 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700/50 shadow-lg active:scale-95 transition-all">
+                        class="home-mode-btn group relative flex w-full items-center justify-between overflow-hidden bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700/50 shadow-lg active:scale-95 transition-all">
                         <div class="flex items-center gap-4">
-                            <span class="material-symbols-outlined text-[28px] text-primary">public</span>
-                            <span class="text-lg font-bold">Multijoueur en Ligne</span>
+                            <span class="home-mode-icon material-symbols-outlined text-primary">public</span>
+                            <span class="home-mode-title font-bold">Multijoueur en Ligne</span>
                         </div>
                         <div
-                            class="flex h-5 items-center rounded-full bg-green-500/20 px-2 text-[9px] font-black text-green-500 border border-green-500/30">
+                            class="home-mode-badge flex items-center bg-green-500/20 font-black text-green-500 border border-green-500/30">
                             EN LIGNE</div>
                     </button>
                 </div>
 
-                <div class="mt-12 flex items-center justify-center gap-10">
+                <div class="home-shortcuts flex items-center">
                     <button onclick="showToast('Classement bientot disponible.', 'info')"
                         class="flex flex-col items-center gap-2 text-slate-500 dark:text-slate-400 active:text-primary transition-colors">
                         <div
-                            class="h-14 w-14 rounded-2xl bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
-                            <span class="material-symbols-outlined text-[28px]">leaderboard</span>
+                            class="home-shortcut-tile bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
+                            <span class="home-shortcut-icon material-symbols-outlined">leaderboard</span>
                         </div>
-                        <span class="text-[10px] font-bold uppercase tracking-widest">Classement</span>
+                        <span class="home-shortcut-label font-bold uppercase">Classement</span>
                     </button>
                     <button onclick="showToast('Boutique bientot disponible.', 'info')"
                         class="flex flex-col items-center gap-2 text-slate-500 dark:text-slate-400 active:text-primary transition-colors">
                         <div
-                            class="h-14 w-14 rounded-2xl bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
-                            <span class="material-symbols-outlined text-[28px]">shopping_basket</span>
+                            class="home-shortcut-tile bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
+                            <span class="home-shortcut-icon material-symbols-outlined">shopping_basket</span>
                         </div>
-                        <span class="text-[10px] font-bold uppercase tracking-widest">Boutique</span>
+                        <span class="home-shortcut-label font-bold uppercase">Boutique</span>
                     </button>
                     <button onclick="showRules()"
                         class="flex flex-col items-center gap-2 text-slate-500 dark:text-slate-400 active:text-primary transition-colors">
                         <div
-                            class="h-14 w-14 rounded-2xl bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
-                            <span class="material-symbols-outlined text-[28px]">help</span>
+                            class="home-shortcut-tile bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
+                            <span class="home-shortcut-icon material-symbols-outlined">help</span>
                         </div>
-                        <span class="text-[10px] font-bold uppercase tracking-widest">Règles</span>
+                        <span class="home-shortcut-label font-bold uppercase">Règles</span>
                     </button>
                 </div>
             </main>
@@ -2560,6 +2734,8 @@
                 this.gravityDirection = 'down';
                 this.movesUntilShiftCount = 10;
                 this.initialMovesUntilShift = 10;
+                this.isGravityAnimating = false;
+                this.gravityFinalizeTimeoutId = null;
 
                 // Hyper-Nexus properties
                 this.hyperNexusEnabled = Boolean(options.hyperNexusEnabled);
@@ -2600,6 +2776,11 @@
                 this.timedOutPlayerIndex = null;
                 moveHistory = [];
                 this.stopTurnTimer();
+                this.isGravityAnimating = false;
+                if (this.gravityFinalizeTimeoutId) {
+                    clearTimeout(this.gravityFinalizeTimeoutId);
+                    this.gravityFinalizeTimeoutId = null;
+                }
 
                 const undoButton = document.getElementById('undoButton');
                 if (undoButton) {
@@ -2864,7 +3045,7 @@
 
             isLocalTurn() {
                 if (this.withAI) {
-                    return this.currentPlayerIndex === 0;
+                    return this.currentPlayerIndex === 0 && !this.isGravityAnimating;
                 }
 
                 if (bluetoothConnection) {
@@ -2874,11 +3055,14 @@
                     if (!networkMatchState.started) {
                         return false;
                     }
+                    if (this.isGravityAnimating) {
+                        return false;
+                    }
                     const localIndices = getLocalPlayerIndices(this.players.length);
                     return localIndices.includes(this.currentPlayerIndex);
                 }
 
-                return true;
+                return !this.isGravityAnimating;
             }
 
             getRemainingTurnMs() {
@@ -3046,6 +3230,11 @@
                 if (this.gameOver) return false;
 
                 this.gameOver = true;
+                this.isGravityAnimating = false;
+                if (this.gravityFinalizeTimeoutId) {
+                    clearTimeout(this.gravityFinalizeTimeoutId);
+                    this.gravityFinalizeTimeoutId = null;
+                }
                 this.endReason = reason;
                 this.timedOutPlayerIndex = Number.isInteger(timedOutPlayerIndex) ? timedOutPlayerIndex : null;
                 this.stopTurnTimer();
@@ -3081,6 +3270,11 @@
 
             restoreSnapshot(snapshot, clearHistory = false) {
                 if (!snapshot) return;
+                if (this.gravityFinalizeTimeoutId) {
+                    clearTimeout(this.gravityFinalizeTimeoutId);
+                    this.gravityFinalizeTimeoutId = null;
+                }
+                this.isGravityAnimating = false;
 
                 if (snapshot.size !== undefined) {
                     this.size = normalizeGridSize(snapshot.size);
@@ -3248,6 +3442,7 @@
 
             async handlePointClick(x, y, source = 'local', forcedPlayerIndex = null) {
                 if (this.gameOver) return;
+                if (this.isGravityAnimating) return;
 
                 if (source === 'local' && !this.isLocalTurn()) return;
                 if (source === 'remote' && this.isLocalTurn()) return;
@@ -3308,19 +3503,22 @@
                     this.nextTurn();
                 }
 
+                let gravityTriggered = false;
                 if (this.gravityEnabled && source !== 'nexus') {
                     this.movesUntilShiftCount--;
                     if (this.movesUntilShiftCount <= 3 && this.movesUntilShiftCount > 0) {
                         if (soundEnabled) playSound('warning');
                     }
                     if (this.movesUntilShiftCount <= 0) {
-                        this.applyGravityShift(actingPlayerIndex);
+                        gravityTriggered = this.applyGravityShift(actingPlayerIndex);
                     }
                 }
                 this.updateUI();
-                this.checkGameEnd();
+                if (!gravityTriggered) {
+                    this.checkGameEnd();
+                }
 
-                if (this.withAI && source !== 'ai' && !isNexus) {
+                if (this.withAI && source !== 'ai' && !isNexus && !gravityTriggered) {
                     await this.handleAITurn();
                 }
             }
@@ -3414,7 +3612,10 @@
                 if (boxesLayer) {
                     boxesLayer.appendChild(box);
                 } else {
-                    document.getElementById('grid').appendChild(box);
+                    const grid = document.getElementById('grid');
+                    if (grid) {
+                        grid.appendChild(box);
+                    }
                 }
 
                 if (typeof triggerConfetti === 'function') {
@@ -3442,9 +3643,13 @@
 
             refreshGravityIndicator() {
                 const panel = document.getElementById('gravityPanel');
+                const spacer = document.getElementById('gravitySpacer');
                 if (panel) {
-                    panel.style.display = this.gravityEnabled ? 'block' : 'none';
+                    panel.style.display = this.gravityEnabled ? 'flex' : 'none';
                     panel.classList.toggle('gravity-glow', this.gravityEnabled && this.movesUntilShiftCount <= 3);
+                }
+                if (spacer) {
+                    spacer.style.display = this.gravityEnabled ? 'block' : 'none';
                 }
 
                 if (!this.gravityEnabled) return;
@@ -3453,7 +3658,7 @@
                 const dirTextEl = document.getElementById('gravityDirectionText');
                 const iconEl = document.getElementById('gravityIcon');
 
-                if (movesEl) movesEl.textContent = this.movesUntilShiftCount;
+                if (movesEl) movesEl.textContent = this.isGravityAnimating ? '...' : this.movesUntilShiftCount;
                 if (dirTextEl) dirTextEl.textContent = this.getGravityDirectionName();
                 if (iconEl) iconEl.style.transform = `rotate(${this.getGravityRotationDegrees()}deg)`;
             }
@@ -3468,116 +3673,151 @@
                 }
             }
 
-            applyGravityShift(triggeringPlayerIndex = null) {
-                const directions = ['up', 'down', 'left', 'right'];
-                let newDirection = this.gravityDirection;
-                while (newDirection === this.gravityDirection) {
-                    newDirection = directions[Math.floor(Math.random() * directions.length)];
-                }
-                this.gravityDirection = newDirection;
-                this.movesUntilShiftCount = this.initialMovesUntilShift;
-                this.refreshGravityIndicator();
+            getShiftedCoordinates(x, y, direction, distance = 1) {
+                let nx = x;
+                let ny = y;
+                if (direction === 'down') ny += distance;
+                else if (direction === 'up') ny -= distance;
+                else if (direction === 'left') nx -= distance;
+                else if (direction === 'right') nx += distance;
+                return { x: nx, y: ny };
+            }
 
-                const cellSize = 100 / this.size;
-
-                // Overlay sequence
-                const overlay = document.getElementById('gravityOverlay');
-                const overlayIcon = document.getElementById('gravityOverlayIcon');
-                if (overlay) {
-                    const rot = this.getGravityRotationDegrees();
-                    if (overlayIcon) overlayIcon.style.transform = `rotate(${rot}deg)`;
-
-                    overlay.style.display = 'flex';
-                    setTimeout(() => overlay.style.opacity = '1', 10);
-                    if (soundEnabled) playSound('shift_slide');
-                    setTimeout(() => {
-                        overlay.style.opacity = '0';
-                        setTimeout(() => overlay.style.display = 'none', 400);
-                    }, 1200);
-                }
-
-                // 1. Group points into clusters (connected by squares)
-                const clusters = this.findClusters();
-
-                // 2. Sort clusters by their position according to gravity direction
-                // to avoid collisions between moving clusters
-                clusters.sort((a, b) => {
+            getClusterSortComparator(direction) {
+                return (a, b) => {
                     const boundsA = this.getClusterBounds(a);
                     const boundsB = this.getClusterBounds(b);
-                    if (this.gravityDirection === 'down') return boundsB.maxY - boundsA.maxY;
-                    if (this.gravityDirection === 'up') return boundsA.minY - boundsB.minY;
-                    if (this.gravityDirection === 'right') return boundsB.maxX - boundsA.maxX;
-                    if (this.gravityDirection === 'left') return boundsA.minX - boundsB.minX;
+                    if (direction === 'down') return boundsB.maxY - boundsA.maxY;
+                    if (direction === 'up') return boundsA.minY - boundsB.minY;
+                    if (direction === 'right') return boundsB.maxX - boundsA.maxX;
+                    if (direction === 'left') return boundsA.minX - boundsB.minX;
                     return 0;
-                });
+                };
+            }
 
-                const newPoints = new Map();
-                const newBoxes = new Map();
-
-                // Track occupied positions as we move clusters
+            getGravitySlidePlan(direction, clusters) {
+                const sortedClusters = [...clusters].sort(this.getClusterSortComparator(direction));
                 const occupied = new Set(this.obstacleEnabled ? this.obstacles : []);
+                this.points.forEach((_owner, key) => occupied.add(key));
 
-                clusters.forEach(cluster => {
+                const plan = [];
+                let totalSlide = 0;
+
+                sortedClusters.forEach((cluster) => {
+                    cluster.points.forEach((pointKey) => occupied.delete(pointKey));
+
                     let slideDistance = 0;
-                    let canMove = true;
-
-                    while (canMove) {
+                    while (true) {
                         const nextDistance = slideDistance + 1;
-                        for (const pointKey of cluster.points) {
-                            let [x, y] = pointKey.split(',').map(Number);
-                            if (this.gravityDirection === 'down') y += nextDistance;
-                            else if (this.gravityDirection === 'up') y -= nextDistance;
-                            else if (this.gravityDirection === 'left') x -= nextDistance;
-                            else if (this.gravityDirection === 'right') x += nextDistance;
+                        let canMove = true;
 
-                            if (x < 0 || x > this.size || y < 0 || y > this.size || occupied.has(`${x},${y}`)) {
+                        for (const pointKey of cluster.points) {
+                            const [px, py] = pointKey.split(',').map(Number);
+                            const shifted = this.getShiftedCoordinates(px, py, direction, nextDistance);
+                            const shiftedKey = `${shifted.x},${shifted.y}`;
+                            if (
+                                shifted.x < 0 ||
+                                shifted.x > this.size ||
+                                shifted.y < 0 ||
+                                shifted.y > this.size ||
+                                occupied.has(shiftedKey)
+                            ) {
                                 canMove = false;
                                 break;
                             }
                         }
-                        if (canMove) slideDistance = nextDistance;
+
+                        if (!canMove) break;
+                        slideDistance = nextDistance;
                     }
 
-                    // Move all points in the cluster
-                    cluster.points.forEach(pointKey => {
+                    cluster.points.forEach((pointKey) => {
+                        const [px, py] = pointKey.split(',').map(Number);
+                        const shifted = this.getShiftedCoordinates(px, py, direction, slideDistance);
+                        occupied.add(`${shifted.x},${shifted.y}`);
+                    });
+
+                    totalSlide += slideDistance * cluster.points.length;
+                    plan.push({ cluster, slideDistance });
+                });
+
+                return { plan, totalSlide };
+            }
+
+            pickBestGravityDirection(clusters) {
+                const candidates = ['up', 'down', 'left', 'right']
+                    .filter((dir) => dir !== this.gravityDirection)
+                    .sort(() => Math.random() - 0.5);
+
+                if (candidates.length === 0) {
+                    return {
+                        direction: this.gravityDirection,
+                        ...this.getGravitySlidePlan(this.gravityDirection, clusters)
+                    };
+                }
+
+                let bestDirection = candidates[0];
+                let bestResult = this.getGravitySlidePlan(bestDirection, clusters);
+
+                for (let i = 1; i < candidates.length; i += 1) {
+                    const direction = candidates[i];
+                    const result = this.getGravitySlidePlan(direction, clusters);
+                    if (result.totalSlide > bestResult.totalSlide) {
+                        bestDirection = direction;
+                        bestResult = result;
+                    }
+                }
+
+                return { direction: bestDirection, ...bestResult };
+            }
+
+            applyGravityShift(triggeringPlayerIndex = null) {
+                if (this.isGravityAnimating) return false;
+
+                const clusters = this.findClusters();
+                const bestShift = this.pickBestGravityDirection(clusters);
+                this.gravityDirection = bestShift.direction;
+                this.movesUntilShiftCount = this.initialMovesUntilShift;
+                this.isGravityAnimating = true;
+
+                if (this.blitzEnabled && this.turnDeadlineTs) {
+                    this.turnDeadlineTs += 650;
+                }
+
+                const cellSize = 100 / this.size;
+                const newPoints = new Map();
+                const newBoxes = new Map();
+
+                bestShift.plan.forEach(({ cluster, slideDistance }) => {
+                    cluster.points.forEach((pointKey) => {
                         const playerIndex = this.points.get(pointKey);
-                        let [x, y] = pointKey.split(',').map(Number);
-                        if (this.gravityDirection === 'down') y += slideDistance;
-                        else if (this.gravityDirection === 'up') y -= slideDistance;
-                        else if (this.gravityDirection === 'left') x -= slideDistance;
-                        else if (this.gravityDirection === 'right') x += slideDistance;
-
-                        const newKey = `${x},${y}`;
+                        if (!Number.isInteger(playerIndex)) return;
+                        const [px, py] = pointKey.split(',').map(Number);
+                        const shifted = this.getShiftedCoordinates(px, py, this.gravityDirection, slideDistance);
+                        const newKey = `${shifted.x},${shifted.y}`;
                         newPoints.set(newKey, playerIndex);
-                        occupied.add(newKey);
 
-                        // Move Point DOM element
                         const pointEl = document.getElementById(`point-${pointKey.replace(',', '-')}`);
                         if (pointEl) {
                             pointEl.id = `point-${newKey.replace(',', '-')}`;
-                            pointEl.style.left = `${x * cellSize}%`;
-                            pointEl.style.top = `${y * cellSize}%`;
+                            pointEl.style.left = `${shifted.x * cellSize}%`;
+                            pointEl.style.top = `${shifted.y * cellSize}%`;
                         }
                     });
 
-                    // Move all associated boxes
-                    cluster.boxes.forEach(boxKey => {
+                    cluster.boxes.forEach((boxKey) => {
                         const ownerIndex = this.boxes.get(boxKey);
-                        let [x, y] = boxKey.split(',').map(Number);
-                        if (this.gravityDirection === 'down') y += slideDistance;
-                        else if (this.gravityDirection === 'up') y -= slideDistance;
-                        else if (this.gravityDirection === 'left') x -= slideDistance;
-                        else if (this.gravityDirection === 'right') x += slideDistance;
-
-                        const newBoxKey = `${x},${y}`;
+                        if (!Number.isInteger(ownerIndex)) return;
+                        const [bx, by] = boxKey.split(',').map(Number);
+                        const shifted = this.getShiftedCoordinates(bx, by, this.gravityDirection, slideDistance);
+                        const newBoxKey = `${shifted.x},${shifted.y}`;
                         newBoxes.set(newBoxKey, ownerIndex);
 
-                        // Move Box DOM element
                         const boxEl = document.getElementById(`box-${boxKey.replace(',', '-')}`);
                         if (boxEl) {
                             boxEl.id = `box-${newBoxKey.replace(',', '-')}`;
-                            boxEl.style.left = `${x * cellSize}%`;
-                            boxEl.style.top = `${y * cellSize}%`;
+                            boxEl.style.left = `${shifted.x * cellSize}%`;
+                            boxEl.style.top = `${shifted.y * cellSize}%`;
                         }
                     });
                 });
@@ -3585,32 +3825,90 @@
                 this.points = newPoints;
                 this.boxes = newBoxes;
 
-                // Recalculate if NEW boxes formed after movement
-                setTimeout(() => {
-                    let newBoxesCount = 0;
-                    for (let y = 0; y < this.size; y++) {
-                        for (let x = 0; x < this.size; x++) {
-                            if (!this.boxes.has(`${x},${y}`) && this.checkBox(x, y)) {
-                                const ownerIndex = this.points.get(`${x},${y}`);
-                                this.completeBox(x, y, ownerIndex !== undefined ? ownerIndex : (triggeringPlayerIndex !== null ? triggeringPlayerIndex : this.currentPlayerIndex));
-                                newBoxesCount++;
-                            }
-                        }
-                    }
-                    if (newBoxesCount > 0 && soundEnabled) {
-                        if (newBoxesCount > 1) playSound('combo');
-                        else playSound('complete');
-                    }
-                    if (soundEnabled) playSound('shift_impact');
-                    this.refreshGravityIndicator();
-                    this.updateUI();
-                }, 600);
+                const overlay = document.getElementById('gravityOverlay');
+                const overlayIcon = document.getElementById('gravityOverlayIcon');
+                if (overlay) {
+                    const rot = this.getGravityRotationDegrees();
+                    if (overlayIcon) overlayIcon.style.transform = `rotate(${rot}deg)`;
+                    overlay.style.display = 'flex';
+                    setTimeout(() => {
+                        if (window.game !== this) return;
+                        overlay.style.opacity = '1';
+                    }, 10);
+                    if (soundEnabled) playSound('shift_slide');
+                    setTimeout(() => {
+                        if (window.game !== this) return;
+                        overlay.style.opacity = '0';
+                        setTimeout(() => {
+                            if (window.game !== this) return;
+                            overlay.style.display = 'none';
+                        }, 400);
+                    }, 1200);
+                }
 
                 const grid = document.getElementById('grid');
-                grid.classList.add('gravity-shake');
-                setTimeout(() => grid.classList.remove('gravity-shake'), 600);
+                if (grid) {
+                    grid.classList.add('gravity-shake');
+                    setTimeout(() => {
+                        if (window.game !== this) return;
+                        grid.classList.remove('gravity-shake');
+                    }, 600);
+                }
 
-                showToast(`Gravity Shift : ${this.getGravityDirectionName()} !`, 'info');
+                showToast(
+                    bestShift.totalSlide > 0
+                        ? `Gravity Shift : ${this.getGravityDirectionName()} !`
+                        : `Gravity Shift : ${this.getGravityDirectionName()} (stable)`,
+                    'info'
+                );
+
+                this.refreshGravityIndicator();
+                this.updateUI();
+
+                if (this.gravityFinalizeTimeoutId) {
+                    clearTimeout(this.gravityFinalizeTimeoutId);
+                }
+                this.gravityFinalizeTimeoutId = setTimeout(async () => {
+                    if (window.game !== this) return;
+                    try {
+                        let newBoxesCount = 0;
+                        for (let y = 0; y < this.size; y++) {
+                            for (let x = 0; x < this.size; x++) {
+                                if (!this.boxes.has(`${x},${y}`) && this.checkBox(x, y)) {
+                                    const ownerIndex = this.points.get(`${x},${y}`);
+                                    this.completeBox(
+                                        x,
+                                        y,
+                                        ownerIndex !== undefined
+                                            ? ownerIndex
+                                            : (triggeringPlayerIndex !== null ? triggeringPlayerIndex : this.currentPlayerIndex)
+                                    );
+                                    newBoxesCount++;
+                                }
+                            }
+                        }
+
+                        if (newBoxesCount > 0 && soundEnabled) {
+                            if (newBoxesCount > 1) playSound('combo');
+                            else playSound('complete');
+                        }
+                        if (soundEnabled) playSound('shift_impact');
+                        this.checkGameEnd();
+
+                        if (this.withAI && this.currentPlayerIndex === 1 && !this.gameOver) {
+                            await this.handleAITurn();
+                        }
+                    } catch (error) {
+                        console.error('Erreur Gravity Shift:', error);
+                    } finally {
+                        this.isGravityAnimating = false;
+                        this.gravityFinalizeTimeoutId = null;
+                        this.refreshGravityIndicator();
+                        this.updateUI();
+                    }
+                }, 600);
+
+                return true;
             }
 
             checkHyperNexus(bx, by, playerIndex) {
@@ -3677,6 +3975,7 @@
                                 // All 4 corners of this box belong to the cluster
                                 const corners = [`${bx},${by}`, `${bx + 1},${by}`, `${bx},${by + 1}`, `${bx + 1},${by + 1}`];
                                 corners.forEach(cornerKey => {
+                                    if (!this.points.has(cornerKey)) return;
                                     if (!visitedPoints.has(cornerKey)) {
                                         visitedPoints.add(cornerKey);
                                         queue.push(cornerKey);
@@ -3742,7 +4041,7 @@
 
                 const grid = document.getElementById('grid');
                 if (grid) {
-                    const isLocked = this.gameOver || !this.isLocalTurn();
+                    const isLocked = this.gameOver || this.isGravityAnimating || !this.isLocalTurn();
                     grid.style.pointerEvents = isLocked ? 'none' : 'auto';
                     grid.dataset.locked = isLocked ? 'true' : 'false';
                     if (currentPlayer) {
@@ -3870,8 +4169,8 @@
 
                 const totalPossiblePoints = this.getTotalPlayablePoints();
 
-                if (this.points.size === totalPossiblePoints || !this.isAnyBoxPossible()) {
-                    this.finishGame(this.points.size === totalPossiblePoints ? 'board' : 'blocked');
+                if (this.points.size >= totalPossiblePoints || !this.isAnyBoxPossible()) {
+                    this.finishGame(this.points.size >= totalPossiblePoints ? 'board' : 'blocked');
                 }
             }
 
@@ -6619,8 +6918,70 @@
             }
         }
 
+        function normalizeRemoteMove(move) {
+            if (!move || typeof move !== 'object') return null;
+            const x = Number(move.x);
+            const y = Number(move.y);
+            if (!Number.isInteger(x) || !Number.isInteger(y)) return null;
+            return { x, y };
+        }
+
+        function getMoveRejectMessage(reason) {
+            switch (reason) {
+                case 'unassigned_slot':
+                    return 'Coup refuse: aucun slot joueur attribue.';
+                case 'match_not_started':
+                    return 'Coup refuse: la manche n est pas encore demarree.';
+                case 'game_not_ready':
+                    return 'Coup refuse: partie non initialisee.';
+                case 'invalid_coordinates':
+                    return 'Coup refuse: coordonnees invalides.';
+                case 'out_of_bounds':
+                    return 'Coup refuse: en dehors de la grille.';
+                case 'not_your_turn':
+                    return 'Coup refuse: ce n est pas votre tour.';
+                case 'occupied_point':
+                    return 'Coup refuse: point deja occupe.';
+                case 'obstacle_point':
+                    return 'Coup refuse: point bloque par un obstacle.';
+                case 'game_over':
+                    return 'Coup refuse: partie terminee.';
+                default:
+                    return 'Coup refuse par l hote.';
+            }
+        }
+
+        async function rejectRemoteMove(targetId, {
+            move = null,
+            reason = 'invalid_move',
+            message = '',
+            actingPlayerIndex = null,
+            includeSync = true
+        } = {}) {
+            if (!isHost || !targetId || targetId === 'host') return;
+            if (!connectionStatus.connected) return;
+            await sendBluetoothData({
+                type: 'moveReject',
+                reason,
+                message: message || getMoveRejectMessage(reason),
+                move,
+                playerIndex: Number.isInteger(actingPlayerIndex) ? actingPlayerIndex : null,
+                gameState: includeSync ? getGameState() : null
+            }, { targetId });
+        }
+
         async function handleRemoteMove(move, targetId = 'host', forcedPlayerIndex = null) {
-            if (!window.game || !move) return;
+            const normalizedMove = normalizeRemoteMove(move);
+            if (!window.game) {
+                if (isHost && targetId && targetId !== 'host') {
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'game_not_ready',
+                        includeSync: false
+                    });
+                }
+                return;
+            }
 
             const playersCount = window.game.players?.length || 2;
             const remoteIndices = getRemotePlayerIndices(playersCount);
@@ -6631,30 +6992,141 @@
             if (isHost && targetId && targetId !== 'host') {
                 const assignedIndex = hostPeerPlayerSlots.get(targetId);
                 if (!Number.isInteger(assignedIndex)) {
-                    if (connectionStatus.connected) {
-                        await sendBluetoothData({ type: 'sync', gameState: getGameState() }, { targetId });
-                    }
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'unassigned_slot',
+                        actingPlayerIndex: assignedIndex
+                    });
                     return;
                 }
                 actingPlayerIndex = assignedIndex;
+
+                if (!networkMatchState.started) {
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'match_not_started',
+                        actingPlayerIndex
+                    });
+                    return;
+                }
+
+                if (window.game.gameOver) {
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'game_over',
+                        actingPlayerIndex
+                    });
+                    return;
+                }
+
+                if (!normalizedMove) {
+                    await rejectRemoteMove(targetId, {
+                        move: null,
+                        reason: 'invalid_coordinates',
+                        actingPlayerIndex
+                    });
+                    return;
+                }
             }
 
-            if (!remoteIndices.includes(actingPlayerIndex)) return;
-            if (window.game.currentPlayerIndex !== actingPlayerIndex) {
+            if (!normalizedMove) {
+                if (!isHost) {
+                    await sendBluetoothData({ type: 'requestSync' });
+                }
+                return;
+            }
+
+            const maxCoordinate = window.game.size;
+            if (
+                normalizedMove.x < 0 || normalizedMove.y < 0 ||
+                normalizedMove.x > maxCoordinate || normalizedMove.y > maxCoordinate
+            ) {
                 if (isHost && targetId && targetId !== 'host') {
-                    await sendBluetoothData({ type: 'sync', gameState: getGameState() }, { targetId });
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'out_of_bounds',
+                        actingPlayerIndex
+                    });
                 } else if (!isHost) {
                     await sendBluetoothData({ type: 'requestSync' });
                 }
                 return;
             }
 
-            await window.game.handlePointClick(move.x, move.y, 'remote', actingPlayerIndex);
+            const pointKey = `${normalizedMove.x},${normalizedMove.y}`;
+
+            if (!remoteIndices.includes(actingPlayerIndex)) {
+                if (isHost && targetId && targetId !== 'host') {
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'unassigned_slot',
+                        actingPlayerIndex
+                    });
+                } else if (!isHost) {
+                    await sendBluetoothData({ type: 'requestSync' });
+                }
+                return;
+            }
+
+            if (window.game.currentPlayerIndex !== actingPlayerIndex) {
+                if (isHost && targetId && targetId !== 'host') {
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'not_your_turn',
+                        actingPlayerIndex
+                    });
+                } else if (!isHost) {
+                    await sendBluetoothData({ type: 'requestSync' });
+                }
+                return;
+            }
+
+            if (window.game.isObstacleKey(pointKey)) {
+                if (isHost && targetId && targetId !== 'host') {
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'obstacle_point',
+                        actingPlayerIndex
+                    });
+                } else if (!isHost) {
+                    await sendBluetoothData({ type: 'requestSync' });
+                }
+                return;
+            }
+
+            if (window.game.points.has(pointKey)) {
+                if (isHost && targetId && targetId !== 'host') {
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'occupied_point',
+                        actingPlayerIndex
+                    });
+                } else if (!isHost) {
+                    await sendBluetoothData({ type: 'requestSync' });
+                }
+                return;
+            }
+
+            const pointsBefore = window.game.points.size;
+            await window.game.handlePointClick(normalizedMove.x, normalizedMove.y, 'remote', actingPlayerIndex);
+
+            if (!window.game.points.has(pointKey) || window.game.points.size <= pointsBefore) {
+                if (isHost && targetId && targetId !== 'host') {
+                    await rejectRemoteMove(targetId, {
+                        move: normalizedMove,
+                        reason: 'invalid_move',
+                        actingPlayerIndex
+                    });
+                } else if (!isHost) {
+                    await sendBluetoothData({ type: 'requestSync' });
+                }
+                return;
+            }
 
             if (isHost) {
                 await sendBluetoothData({
                     type: 'move',
-                    move,
+                    move: normalizedMove,
                     playerIndex: actingPlayerIndex
                 }, { excludeTargetId: targetId });
             }
@@ -6823,6 +7295,19 @@
                             type: 'sync',
                             gameState: getGameState()
                         }, targetId ? { targetId } : undefined);
+                    }
+                    break;
+                case 'moveReject':
+                    if (!isHost) {
+                        const reason = String(data.reason || '');
+                        const fallbackMessage = getMoveRejectMessage(reason);
+                        const rejectMessage = String(data.message || '').trim() || fallbackMessage;
+                        showToast(rejectMessage, 'info', 2600);
+                        if (data.gameState) {
+                            syncGameState(data.gameState);
+                        } else {
+                            await sendBluetoothData({ type: 'requestSync' });
+                        }
                     }
                     break;
                 case 'timeout':
