@@ -1,1567 +1,13 @@
-<!DOCTYPE html>
-<html lang="fr" class="dark">
-
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Jeu des Points</title>
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0f14'/%3E%3Ccircle cx='20' cy='20' r='6' fill='%23137fec'/%3E%3Ccircle cx='44' cy='20' r='6' fill='%23e2e8f0'/%3E%3Ccircle cx='20' cy='44' r='6' fill='%23e2e8f0'/%3E%3Ccircle cx='44' cy='44' r='6' fill='%23137fec'/%3E%3C/svg%3E" />
-
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-        rel="stylesheet" />
-
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#137fec",
-                        "background-light": "#f6f7f8",
-                        "background-dark": "#0a0f14",
-                    },
-                    fontFamily: {
-                        "display": ["Space Grotesk", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "1rem",
-                        "2xl": "1.5rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
-
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .grid-bg {
-                background-image: radial-gradient(circle, rgba(19, 127, 236, 0.2) 1px, transparent 1px);
-                background-size: 40px 40px;
-            }
-            .ios-blur {
-                -webkit-backdrop-filter: blur(24px);
-                backdrop-filter: blur(24px);
-                background-color: rgb(255 255 255 / 0.7);
-            }
-
-            .dark .ios-blur {
-                background-color: rgb(15 23 42 / 0.7);
-            }
-        }
-        
-        body {
-            min-height: 100dvh;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-        }
-
-        /* Essential Game Grid Styles from original CSS */
-        .point-grid {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
-
-        .point-grid::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 0;
-            background-image:
-                linear-gradient(to right, rgba(100, 116, 139, 0.4) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(100, 116, 139, 0.4) 1px, transparent 1px);
-            background-size: calc(100% / var(--grid-size, 8)) calc(100% / var(--grid-size, 8));
-        }
-
-        .dark .point-grid::before {
-            background-image:
-                linear-gradient(to right, rgba(148, 163, 184, 0.24) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(148, 163, 184, 0.24) 1px, transparent 1px);
-        }
-
-        .grid-wrapper {
-            --game-grid-size: clamp(180px, calc(100dvh - 360px), 560px);
-            width: min(92vw, var(--game-grid-size));
-            max-width: 560px;
-            max-height: var(--game-grid-size);
-        }
-
-        @media (max-height: 820px) {
-            .grid-wrapper {
-                --game-grid-size: clamp(170px, calc(100dvh - 320px), 520px);
-            }
-        }
-
-        .intersection-point {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: all 0.2s ease-out;
-            box-shadow: 0 0 0 2px transparent;
-            z-index: 10;
-        }
-
-        .intersection-point.hover-active {
-            transform: translate(-50%, -50%) scale(1.6);
-            cursor: pointer;
-            box-shadow: 0 0 0 4px rgba(var(--point-color-rgb), 0.2);
-        }
-
-        .intersection-point.hover-blocked {
-            cursor: not-allowed;
-            background-color: #ef4444 !important;
-            transform: translate(-50%, -50%) scale(0.8);
-        }
-
-        .point {
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            background-color: var(--point-color, #e2e8f0);
-            border: 2px solid rgba(255, 255, 255, 0.85);
-            border-radius: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            pointer-events: none;
-            z-index: 15;
-            box-shadow: 0 2px 8px rgba(2, 6, 23, 0.55);
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .point.visible {
-            transform: translate(-50%, -50%) scale(1);
-        }
-
-        .point.recent {
-            animation: pulseRecent 2s infinite;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
-        }
-
-        @keyframes pulseRecent {
-            0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.7); }
-            70% { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
-            100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-        }
-
-        .line {
-            position: absolute;
-            background-color: var(--line-color);
-            transform-origin: left center;
-            opacity: 0;
-            z-index: 5;
-            /* width and height set inline by JS */
-            transition: opacity 0.3s ease-in, background-color 0.4s ease;
-        }
-
-        .line.visible {
-            opacity: 1;
-        }
-
-        .box {
-            position: absolute;
-            opacity: 0;
-            transform: scale(0.8);
-            z-index: 2;
-            pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            border-radius: 4px;
-            background: var(--box-color-soft, rgba(19, 127, 236, 0.35));
-            border: 1px solid rgba(255, 255, 255, 0.28);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 8px 18px rgba(2, 6, 23, 0.28);
-        }
-
-        .box.visible {
-            opacity: 1;
-            transform: scale(1);
-        }
-        
-        .box-inner {
-            width: 100%;
-            height: 100%;
-            background-color: var(--box-color);
-            opacity: 0.35;
-            transition: opacity 0.3s ease;
-            border-radius: inherit;
-        }
-
-        /* Confetti */
-        .confetti {
-            position: fixed;
-            width: 6px;
-            height: 6px;
-            background-color: var(--c-color);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 9999;
-            animation: confettiFall 0.8s ease-out forwards;
-        }
-
-        @keyframes confettiFall {
-            0% { transform: translate(0, 0) scale(1.5); opacity: 1; }
-            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
-        }
-        
-        /* Grid Layers */
-        
-        .point-hitbox {
-            position: absolute;
-            width: 44px;
-            height: 44px;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            z-index: 20;
-            border-radius: 50%;
-        }
-
-        .point-hitbox.blocked {
-            cursor: not-allowed;
-            background-color: rgba(239, 68, 68, 0.2);
-        }
-
-        #obstacleDensitySelector {
-            display: none;
-        }
-
-        #obstacleDensitySelector.visible {
-            display: block;
-        }
-
-        .density-option {
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            background: rgba(248, 250, 252, 0.7);
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            border-radius: 0.75rem;
-            padding: 0.55rem 0.3rem;
-            transition: all 0.2s ease;
-        }
-
-        .dark .density-option {
-            background: rgba(30, 41, 59, 0.5);
-            border-color: rgba(71, 85, 105, 0.6);
-            color: #94a3b8;
-        }
-
-        .density-option.active {
-            background: rgba(19, 127, 236, 0.12);
-            border-color: rgba(19, 127, 236, 0.45);
-            color: #137fec;
-            box-shadow: 0 0 0 1px rgba(19, 127, 236, 0.22);
-        }
-
-        .dark .density-option.active {
-            color: #93c5fd;
-            background: rgba(19, 127, 236, 0.18);
-            border-color: rgba(96, 165, 250, 0.55);
-        }
-
-        #uiToggleGravity.locked,
-        #uiToggleNexus.locked,
-        #uiToggleObstacles.locked {
-            opacity: 0.55;
-            pointer-events: none;
-            filter: saturate(0.8);
-        }
-
-        .density-option:disabled {
-            opacity: 0.55;
-            pointer-events: none;
-        }
-
-        .obstacle-tooltip {
-            position: absolute;
-            bottom: calc(100% + 6px);
-            left: 50%;
-            transform: translateX(-50%);
-            white-space: nowrap;
-            background: rgba(15, 23, 42, 0.92);
-            color: #f8fafc;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            border-radius: 0.5rem;
-            padding: 0.2rem 0.45rem;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.16s ease;
-            z-index: 45;
-        }
-
-        .obstacle-marker:hover .obstacle-tooltip {
-            opacity: 1;
-        }
-
-        #boxesLayer {
-            z-index: 5;
-        }
-
-        #pointsLayer {
-            z-index: 30;
-        }
-
-        #obstaclesLayer {
-            z-index: 35;
-        }
-
-        .box-number {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 13px;
-            line-height: 1;
-            font-weight: 900;
-            letter-spacing: 0.02em;
-            color: rgba(255, 255, 255, 0.92);
-            text-shadow: 0 1px 2px rgba(15, 23, 42, 0.7);
-            z-index: 2;
-            font-variant-numeric: tabular-nums;
-            pointer-events: none;
-        }
-        
-        .grid-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .grid-hitbox {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: all;
-            z-index: 2;
-        }
-        
-        /* Gravity Pop */
-        @keyframes gravityPop {
-            from { transform: scale(0.6); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .gravity-shake {
-            animation: gravityShake 0.6s cubic-bezier(.36, .07, .19, .97) both;
-        }
-        @keyframes gravityShake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
-        }
-        
-        /* Obstacles */
-        .obstacle-marker {
-            position: absolute;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: auto;
-            z-index: 20;
-            cursor: help;
-            border: 2px solid;
-            transform: translate(-50%, -50%);
-            border-color: rgba(249, 115, 22, 0.92);
-            background: rgba(254, 215, 170, 0.7);
-            box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.28), 0 2px 8px rgba(124, 45, 18, 0.2);
-            animation: obstacleAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) backwards, obstaclePulseLight 3s ease-in-out infinite;
-        }
-        
-        .obstacle-marker::before, .obstacle-marker::after {
-            content: '';
-            position: absolute;
-            width: 60%;
-            height: 2.5px;
-            border-radius: 2px;
-            background: rgba(124, 45, 18, 0.9);
-        }
-        .obstacle-marker::before { transform: rotate(45deg); }
-        .obstacle-marker::after { transform: rotate(-45deg); }
-
-        .dark .obstacle-marker {
-            border-color: rgba(251, 146, 60, 0.98);
-            background: rgba(124, 45, 18, 0.42);
-            box-shadow: 0 0 0 2px rgba(30, 41, 59, 0.42), 0 2px 8px rgba(0, 0, 0, 0.35);
-            animation: obstacleAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) backwards, obstaclePulseDark 3s ease-in-out infinite;
-        }
-
-        .dark .obstacle-marker::before,
-        .dark .obstacle-marker::after {
-            background: rgba(255, 237, 213, 0.95);
-        }
-        
-        @keyframes obstacleAppear {
-            0% { transform: translate(-50%, -50%) scale(0) rotate(-45deg); opacity: 0; }
-            100% { transform: translate(-50%, -50%) scale(1) rotate(0); opacity: 1; }
-        }
-        @keyframes obstaclePulseLight {
-            0%, 100% { box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.28), 0 2px 8px rgba(124, 45, 18, 0.2); }
-            50% { box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.35), 0 2px 12px rgba(249, 115, 22, 0.34); }
-        }
-        @keyframes obstaclePulseDark {
-            0%, 100% { box-shadow: 0 0 0 2px rgba(30, 41, 59, 0.42), 0 2px 8px rgba(0, 0, 0, 0.35); }
-            50% { box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.3), 0 2px 12px rgba(234, 88, 12, 0.4); }
-        }
-        
-        /* Toasts */
-        .toast-container {
-            position: fixed;
-            bottom: 6rem;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            pointer-events: none;
-            width: 90%;
-            max-width: 400px;
-        }
-        .toast {
-            background: rgba(15, 23, 42, 0.95);
-            color: white;
-            padding: 0.75rem 1rem;
-            border-radius: 1rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            animation: toastEnter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-        .toast.hiding {
-            animation: toastExit 0.3s ease-in forwards;
-        }
-        .toast.success { border-left: 4px solid #10b981; }
-        .toast.error { border-left: 4px solid #ef4444; }
-        .toast.info { border-left: 4px solid #3b82f6; }
-        .toast.warning { border-left: 4px solid #f59e0b; }
-        
-        @keyframes toastEnter {
-            from { opacity: 0; transform: translateY(20px) scale(0.9); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes toastExit {
-            from { opacity: 1; transform: translateY(0) scale(1); }
-            to { opacity: 0; transform: translateY(20px) scale(0.9); }
-        }
-
-        @keyframes scoreBump {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.18); }
-            100% { transform: scale(1); }
-        }
-
-        .bump {
-            animation: scoreBump 0.2s ease-out;
-        }
-        
-        .spinner {
-            border: 2px solid rgba(19, 127, 236, 0.1);
-            border-top: 2px solid #137fec;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Hide logic for screens */
-        .screen-hidden {
-            display: none !important;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-            width: 0;
-            height: 0;
-            display: none;
-        }
-
-        :root {
-            --safe-top: env(safe-area-inset-top, 0px);
-            --safe-bottom: env(safe-area-inset-bottom, 0px);
-        }
-
-        .home-screen {
-            padding-top: max(0px, var(--safe-top));
-        }
-
-        .home-header {
-            padding-left: clamp(14px, 5vw, 24px);
-            padding-right: clamp(14px, 5vw, 24px);
-            padding-top: clamp(8px, 2.2vh, 16px);
-            padding-bottom: clamp(8px, 2.2vh, 14px);
-        }
-
-        .home-header-spacer,
-        .home-header-btn {
-            width: clamp(42px, 11vw, 48px);
-            height: clamp(42px, 11vw, 48px);
-        }
-
-        .home-header-btn {
-            border-radius: clamp(12px, 3.6vw, 16px);
-        }
-
-        .home-main {
-            width: min(100%, 430px);
-            padding-left: clamp(14px, 5vw, 30px);
-            padding-right: clamp(14px, 5vw, 30px);
-            padding-top: clamp(4px, 1.4vh, 12px);
-            padding-bottom: calc(clamp(14px, 2.6vh, 26px) + var(--safe-bottom));
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: clamp(10px, 2.5vh, 22px);
-        }
-
-        .home-brand {
-            margin-top: 0;
-            margin-bottom: 0;
-            gap: clamp(10px, 2.4vh, 20px);
-        }
-
-        .home-logo {
-            gap: clamp(10px, 3vw, 24px);
-            padding: clamp(8px, 2.5vw, 16px);
-        }
-
-        .home-logo-dot {
-            width: clamp(14px, 4.8vw, 20px);
-            height: clamp(14px, 4.8vw, 20px);
-        }
-
-        .home-logo-ring {
-            inset: calc(clamp(8px, 2.5vw, 16px) * -0.25);
-        }
-
-        .home-title {
-            font-size: clamp(2rem, 9.2vw, 3rem);
-            line-height: 1.02;
-            letter-spacing: -0.03em;
-            text-wrap: balance;
-        }
-
-        .home-subtitle {
-            margin-top: clamp(6px, 1.6vh, 12px);
-            font-size: clamp(0.58rem, 2.55vw, 0.78rem);
-            letter-spacing: clamp(0.2em, 0.8vw, 0.32em);
-        }
-
-        .home-mode-list {
-            gap: clamp(10px, 2.2vh, 16px);
-        }
-
-        .home-mode-btn {
-            height: clamp(60px, 9.6vh, 74px);
-            border-radius: clamp(18px, 6vw, 24px);
-            padding-left: clamp(16px, 5.5vw, 28px);
-            padding-right: clamp(16px, 5.5vw, 28px);
-        }
-
-        .home-mode-icon {
-            font-size: clamp(22px, 6.8vw, 28px);
-        }
-
-        .home-mode-title {
-            font-size: clamp(1rem, 4.7vw, 1.13rem);
-            line-height: 1.1;
-        }
-
-        .home-mode-chevron {
-            font-size: clamp(18px, 5vw, 22px);
-        }
-
-        .home-mode-badge {
-            height: clamp(18px, 3.2vh, 22px);
-            border-radius: 9999px;
-            font-size: clamp(8px, 2vw, 9px);
-            padding-inline: clamp(8px, 2.5vw, 12px);
-        }
-
-        .home-shortcuts {
-            margin-top: 0;
-            gap: clamp(12px, 5vw, 38px);
-            width: 100%;
-            justify-content: space-evenly;
-        }
-
-        .home-shortcut-tile {
-            width: clamp(48px, 13vw, 56px);
-            height: clamp(48px, 13vw, 56px);
-            border-radius: clamp(12px, 3.8vw, 16px);
-        }
-
-        .home-shortcut-icon {
-            font-size: clamp(22px, 6vw, 28px);
-        }
-
-        .home-shortcut-label {
-            font-size: clamp(0.5rem, 2.3vw, 0.64rem);
-            letter-spacing: clamp(0.09em, 0.5vw, 0.18em);
-        }
-
-        @media (max-height: 760px) {
-            .home-main {
-                gap: 10px;
-            }
-
-            .home-subtitle {
-                opacity: 0.72;
-            }
-
-            .home-mode-btn {
-                height: clamp(56px, 8.8vh, 66px);
-            }
-
-            .home-mode-badge {
-                display: none;
-            }
-        }
-
-        @media (max-height: 660px) {
-            .home-brand {
-                gap: 8px;
-            }
-
-            .home-subtitle {
-                display: none;
-            }
-
-            .home-shortcuts {
-                gap: 10px;
-            }
-        }
-
-        @media (max-width: 360px) {
-            .home-main {
-                padding-left: 12px;
-                padding-right: 12px;
-            }
-
-            .home-mode-btn {
-                padding-left: 14px;
-                padding-right: 14px;
-            }
-
-            .home-mode-title {
-                font-size: 0.95rem;
-            }
-
-            .home-shortcuts {
-                gap: 8px;
-            }
-        }
-        
-    </style>
-</head>
-
-<body
-    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased overflow-hidden selection:bg-primary/30">
-
-    <div class="relative flex h-[100dvh] w-full flex-col overflow-hidden">
-        <!-- Global background elements -->
-        <div class="absolute inset-0 grid-bg pointer-events-none opacity-40 dark:opacity-20 z-0"></div>
-        <div
-            class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background-light dark:to-background-dark pointer-events-none z-0">
-        </div>
-
-        <!-- Hidden Inputs required by JS -->
-        <div id="setup" class="hidden">
-            <select id="gameMode" class="hidden">
-                <option value="2players">2</option>
-                <option value="3players">3</option>
-                <option value="4players">4</option>
-                <option value="ai">AI</option>
-                <option value="bluetooth">BT</option>
-            </select>
-            <select id="gridSize" class="hidden">
-                <option value="8">8</option>
-                <option value="6">6</option>
-                <option value="10">10</option>
-                <option value="12">12</option>
-            </select>
-            <select id="onlinePlayersCount" class="hidden">
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-            </select>
-            <select id="gamePace" class="hidden">
-                <option value="classic">C</option>
-                <option value="blitz">B</option>
-            </select>
-            <select id="blitzTurnTime" class="hidden">
-                <option value="10">10</option>
-            </select>
-            <select id="aiDifficulty" class="hidden">
-                <option value="hard">H</option>
-            </select>
-            <input type="hidden" id="gravityShift" value="off">
-            <input type="hidden" id="hyperNexus" value="off">
-            <input type="hidden" id="obstacleMode" value="off">
-            <input type="hidden" id="obstacleDensity" value="medium">
-            <!-- Player config inputs -->
-            <div id="playerConfigsHidden"></div>
-        </div>
-
-        <!-- Hidden theme toggle required by JS -->
-        <button id="themeToggle" class="hidden"><svg id="themeIcon"></svg></button>
-
-        <!-- SCREEN 1: MAIN MENU -->
-        <div id="screenMainMenu" class="home-screen relative z-10 flex flex-1 flex-col w-full h-full">
-            <header class="home-header relative z-20 flex items-center justify-between shrink-0">
-                <div class="home-header-spacer"></div>
-                <div class="flex gap-3">
-                    <button
-                        class="home-header-btn flex items-center justify-center bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform"
-                        onclick="showRules()">
-                        <span class="material-symbols-outlined text-[26px]">description</span>
-                    </button>
-                    <button
-                        class="home-header-btn flex items-center justify-center bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform"
-                        onclick="document.documentElement.classList.toggle('dark')">
-                        <span class="material-symbols-outlined text-[26px]">dark_mode</span>
-                    </button>
-                </div>
-            </header>
-
-            <main class="home-main flex-1 overflow-hidden mx-auto">
-                <div class="home-brand flex flex-col items-center">
-                    <div class="home-logo relative overflow-visible grid grid-cols-2">
-                        <div class="home-logo-dot rounded-full bg-primary shadow-[0_0_20px_rgba(19,127,236,0.8)]"></div>
-                        <div class="home-logo-dot rounded-full bg-slate-200 dark:bg-slate-800"></div>
-                        <div class="home-logo-dot rounded-full bg-slate-200 dark:bg-slate-800"></div>
-                        <div class="home-logo-dot rounded-full bg-primary shadow-[0_0_20px_rgba(19,127,236,0.8)]"></div>
-                        <div class="home-logo-ring absolute border-2 border-primary/30 rounded-3xl"></div>
-                    </div>
-                    <div class="text-center">
-                        <h1 class="home-title font-bold text-slate-900 dark:text-white">
-                            Jeu des <span class="text-primary">Points</span>
-                        </h1>
-                        <p class="home-subtitle font-bold text-slate-500 dark:text-slate-400 uppercase opacity-80">
-                            Stratégie sur Grille
-                        </p>
-                    </div>
-                </div>
-
-                <div class="home-mode-list flex w-full flex-col">
-                    <button onclick="selectModeAndGoSetup('2players')"
-                        class="home-mode-btn group relative flex w-full items-center justify-between overflow-hidden bg-primary text-white shadow-xl shadow-primary/30 active:scale-95 transition-all">
-                        <div class="flex items-center gap-4">
-                            <span class="home-mode-icon material-symbols-outlined">groups</span>
-                            <span class="home-mode-title font-bold">Partie Locale</span>
-                        </div>
-                        <span class="home-mode-chevron material-symbols-outlined opacity-60">chevron_right</span>
-                    </button>
-
-                    <button onclick="selectModeAndGoSetup('ai')"
-                        class="home-mode-btn group relative flex w-full items-center justify-between overflow-hidden bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700/50 shadow-lg active:scale-95 transition-all">
-                        <div class="flex items-center gap-4">
-                            <span class="home-mode-icon material-symbols-outlined text-primary">smart_toy</span>
-                            <span class="home-mode-title font-bold">Contre IA</span>
-                        </div>
-                        <span
-                            class="home-mode-chevron material-symbols-outlined opacity-30 group-hover:opacity-100 transition-opacity">chevron_right</span>
-                    </button>
-
-                    <button onclick="selectModeAndGoSetup('bluetooth')"
-                        class="home-mode-btn group relative flex w-full items-center justify-between overflow-hidden bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700/50 shadow-lg active:scale-95 transition-all">
-                        <div class="flex items-center gap-4">
-                            <span class="home-mode-icon material-symbols-outlined text-primary">public</span>
-                            <span class="home-mode-title font-bold">Multijoueur en Ligne</span>
-                        </div>
-                        <div
-                            class="home-mode-badge flex items-center bg-green-500/20 font-black text-green-500 border border-green-500/30">
-                            EN LIGNE</div>
-                    </button>
-                </div>
-
-                <div class="home-shortcuts flex items-center">
-                    <button onclick="showToast('Classement bientot disponible.', 'info')"
-                        class="flex flex-col items-center gap-2 text-slate-500 dark:text-slate-400 active:text-primary transition-colors">
-                        <div
-                            class="home-shortcut-tile bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
-                            <span class="home-shortcut-icon material-symbols-outlined">leaderboard</span>
-                        </div>
-                        <span class="home-shortcut-label font-bold uppercase">Classement</span>
-                    </button>
-                    <button onclick="showToast('Boutique bientot disponible.', 'info')"
-                        class="flex flex-col items-center gap-2 text-slate-500 dark:text-slate-400 active:text-primary transition-colors">
-                        <div
-                            class="home-shortcut-tile bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
-                            <span class="home-shortcut-icon material-symbols-outlined">shopping_basket</span>
-                        </div>
-                        <span class="home-shortcut-label font-bold uppercase">Boutique</span>
-                    </button>
-                    <button onclick="showRules()"
-                        class="flex flex-col items-center gap-2 text-slate-500 dark:text-slate-400 active:text-primary transition-colors">
-                        <div
-                            class="home-shortcut-tile bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-1 border border-slate-200/50 dark:border-slate-700/30 shadow-sm">
-                            <span class="home-shortcut-icon material-symbols-outlined">help</span>
-                        </div>
-                        <span class="home-shortcut-label font-bold uppercase">Règles</span>
-                    </button>
-                </div>
-            </main>
-        </div>
-
-        <!-- SCREEN 2: SETUP -->
-        <div id="screenSetup" class="relative z-10 flex flex-1 flex-col w-full h-full screen-hidden">
-            <header
-                class="flex items-center p-4 pb-2 justify-between shrink-0 bg-background-light/90 dark:bg-background-dark/90 ios-blur z-20">
-                <div onclick="navToScreen('screenMainMenu')"
-                    class="text-slate-900 dark:text-slate-100 flex size-12 shrink-0 items-center justify-center cursor-pointer hover:opacity-70 bg-slate-200/50 dark:bg-slate-800/50 rounded-full transition-all active:scale-90">
-                    <span class="material-symbols-outlined">arrow_back_ios_new</span>
-                </div>
-                <h2
-                    class="text-slate-900 dark:text-slate-100 text-base font-bold leading-tight flex-1 text-center pr-12 uppercase tracking-widest">
-                    Configuration</h2>
-            </header>
-
-            <main class="flex-1 overflow-y-auto no-scrollbar px-6 pb-32 pt-4 w-full max-w-md mx-auto">
-
-                <!-- Dynamic Mode Indicator -->
-                <div class="p-4 rounded-2xl bg-primary/10 border border-primary/20 mb-8 flex items-center gap-4">
-                    <div class="size-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                        <span id="setupModeIcon"
-                            class="material-symbols-outlined text-primary text-[28px]">sports_esports</span>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-0.5">Mode Sélectionné
-                        </p>
-                        <p id="setupModeText" class="text-slate-900 dark:text-slate-100 font-bold text-lg">Partie Locale
-                        </p>
-                    </div>
-                </div>
-
-                <section id="localPlayersSection" class="mb-10">
-                    <div class="flex items-center justify-between mb-5">
-                        <h3 class="text-slate-900 dark:text-slate-100 text-base font-bold">Joueurs locaux</h3>
-                        <span id="localPlayersDisplay"
-                            class="text-primary font-bold px-3 py-1 bg-primary/10 rounded-lg text-sm border border-primary/20">2
-                            joueurs</span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button onclick="setLocalPlayersMode(2)" id="localPlayersBtn2"
-                            class="py-3 text-sm font-bold rounded-xl bg-primary text-white shadow-lg shadow-primary/30 border border-primary/50 transition-all">2
-                            joueurs</button>
-                        <button onclick="setLocalPlayersMode(3)" id="localPlayersBtn3"
-                            class="py-3 text-sm font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all border border-transparent">3
-                            joueurs</button>
-                        <button onclick="setLocalPlayersMode(4)" id="localPlayersBtn4"
-                            class="py-3 text-sm font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all border border-transparent">4
-                            joueurs</button>
-                    </div>
-                </section>
-
-                <section id="onlinePlayersSection" class="mb-10 hidden">
-                    <div class="flex items-center justify-between mb-5">
-                        <h3 class="text-slate-900 dark:text-slate-100 text-base font-bold">Joueurs en ligne</h3>
-                        <span id="onlinePlayersDisplay"
-                            class="text-primary font-bold px-3 py-1 bg-primary/10 rounded-lg text-sm border border-primary/20">2
-                            joueurs</span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button onclick="setOnlinePlayersCount(2)" id="onlinePlayersBtn2"
-                            class="py-3 text-sm font-bold rounded-xl bg-primary text-white shadow-lg shadow-primary/30 border border-primary/50 transition-all">2
-                            joueurs</button>
-                        <button onclick="setOnlinePlayersCount(3)" id="onlinePlayersBtn3"
-                            class="py-3 text-sm font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all border border-transparent">3
-                            joueurs</button>
-                        <button onclick="setOnlinePlayersCount(4)" id="onlinePlayersBtn4"
-                            class="py-3 text-sm font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all border border-transparent">4
-                            joueurs</button>
-                    </div>
-                    <p class="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        WebRTC: jusqu a 4 appareils (1 hote + 3 invites). L hote choisit 2, 3 ou 4 joueurs avant
-                        d ouvrir la session.
-                    </p>
-                </section>
-
-                <section id="playerNamesSection" class="mb-10">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-slate-900 dark:text-slate-100 text-base font-bold">Pseudos</h3>
-                        <span
-                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-md">Joueurs</span>
-                    </div>
-                    <div class="space-y-3">
-                        <div id="playerNameRow1">
-                            <label id="playerNameLabel1"
-                                class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Joueur
-                                1</label>
-                            <input id="player1Name" type="text" maxlength="20" placeholder="Joueur 1"
-                                class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all">
-                        </div>
-                        <div id="playerNameRow2">
-                            <label id="playerNameLabel2"
-                                class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Joueur
-                                2</label>
-                            <input id="player2Name" type="text" maxlength="20" placeholder="Joueur 2"
-                                class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all">
-                        </div>
-                        <div id="playerNameRow3">
-                            <label id="playerNameLabel3"
-                                class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Joueur
-                                3</label>
-                            <input id="player3Name" type="text" maxlength="20" placeholder="Joueur 3"
-                                class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all">
-                        </div>
-                        <div id="playerNameRow4">
-                            <label id="playerNameLabel4"
-                                class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Joueur
-                                4</label>
-                            <input id="player4Name" type="text" maxlength="20" placeholder="Joueur 4"
-                                class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all">
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Grid Size -->
-                <section class="mb-10">
-                    <div class="flex items-center justify-between mb-5">
-                        <h3 class="text-slate-900 dark:text-slate-100 text-base font-bold">Taille de grille</h3>
-                        <span id="displayGridSize"
-                            class="text-primary font-bold px-3 py-1 bg-primary/10 rounded-lg text-sm border border-primary/20">8
-                            x 8</span>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button onclick="setGridSize(6)" id="gridBtn6"
-                            class="py-3 text-sm font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all border border-transparent">6x6</button>
-                        <button onclick="setGridSize(8)" id="gridBtn8"
-                            class="py-3 text-sm font-bold rounded-xl bg-primary text-white shadow-lg shadow-primary/30 border border-primary/50 transition-all">8x8</button>
-                        <button onclick="setGridSize(10)" id="gridBtn10"
-                            class="py-3 text-sm font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all border border-transparent">10x10</button>
-                        <button onclick="setGridSize(12)" id="gridBtn12"
-                            class="py-3 text-sm font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 transition-all border border-transparent">12x12</button>
-                    </div>
-                </section>
-
-                <!-- AI Difficulty (Hidden by default) -->
-                <section id="aiConfigSection" class="mb-10 hidden">
-                    <h3 class="text-slate-900 dark:text-slate-100 text-base font-bold mb-4">Difficulté IA</h3>
-                    <div
-                        class="flex p-1.5 bg-slate-200/50 dark:bg-slate-800/80 rounded-2xl border border-slate-300 dark:border-slate-700/50 shadow-inner">
-                        <button onclick="setAIDifficulty('easy')" id="aiBtn_easy"
-                            class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500 dark:text-slate-400">FACILE</button>
-                        <button onclick="setAIDifficulty('medium')" id="aiBtn_medium"
-                            class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500 dark:text-slate-400">MOYEN</button>
-                        <button onclick="setAIDifficulty('hard')" id="aiBtn_hard"
-                            class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm border border-black/5 dark:border-white/5">DIFFICILE</button>
-                        <button onclick="setAIDifficulty('very_hard')" id="aiBtn_very_hard"
-                            class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500 dark:text-slate-400">EXPERT</button>
-                    </div>
-                </section>
-
-                <!-- Pace Selection -->
-                <section class="mb-10">
-                    <h3 class="text-slate-900 dark:text-slate-100 text-base font-bold mb-4">Rythme de jeu</h3>
-                    <div class="flex gap-3">
-                        <button onclick="setPace('classic')" id="paceBtn_classic"
-                            class="flex-1 p-4 rounded-2xl border-2 border-primary bg-primary/5 flex flex-col items-center gap-2 transition-all">
-                            <span class="material-symbols-outlined text-primary text-[28px]">schedule</span>
-                            <span class="text-sm font-bold text-slate-900 dark:text-white">Classique</span>
-                        </button>
-                        <button onclick="setPace('blitz')" id="paceBtn_blitz"
-                            class="flex-1 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col items-center gap-2 transition-all opacity-70">
-                            <span class="material-symbols-outlined text-slate-500 text-[28px]">bolt</span>
-                            <span class="text-sm font-bold text-slate-500">Blitz (10s)</span>
-                        </button>
-                    </div>
-                </section>
-
-                <!-- Advanced Modes -->
-                <section class="mb-4">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-slate-900 dark:text-slate-100 text-base font-bold">Modes Avancés</h3>
-                        <span
-                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-md">Optionnel</span>
-                    </div>
-
-                    <div class="space-y-3">
-                        <!-- Gravity Shift -->
-                        <div id="uiToggleGravity" onclick="toggleAdvancedMode('gravityShift', 'uiToggleGravity')"
-                            class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700/50 transition-colors cursor-pointer active:scale-[0.98]">
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="size-11 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                                    <span
-                                        class="material-symbols-outlined text-blue-500 text-[24px]">keyboard_double_arrow_down</span>
-                                </div>
-                                <div>
-                                    <p class="text-slate-900 dark:text-slate-100 font-bold text-[14px] mb-0.5">Gravity
-                                        Shift</p>
-                                    <p class="text-slate-500 dark:text-slate-400 text-[11px] leading-tight">La gravité
-                                        bascule tous les 10 coups</p>
-                                </div>
-                            </div>
-                            <div
-                                class="w-12 h-7 bg-slate-200 dark:bg-slate-700 rounded-full relative p-1 flex items-center transition-colors duration-300 toggle-track">
-                                <div
-                                    class="size-5 bg-white rounded-full shadow-md transition-transform duration-300 toggle-knob">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Hyper Nexus -->
-                        <div id="uiToggleNexus" onclick="toggleAdvancedMode('hyperNexus', 'uiToggleNexus')"
-                            class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700/50 transition-colors cursor-pointer active:scale-[0.98]">
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="size-11 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-purple-500 text-[24px]">hub</span>
-                                </div>
-                                <div>
-                                    <p class="text-slate-900 dark:text-slate-100 font-bold text-[14px] mb-0.5">
-                                        Hyper-Nexus</p>
-                                    <p class="text-slate-500 dark:text-slate-400 text-[11px] leading-tight">Réactions en
-                                        chaîne automatiques</p>
-                                </div>
-                            </div>
-                            <div
-                                class="w-12 h-7 bg-slate-200 dark:bg-slate-700 rounded-full relative p-1 flex items-center transition-colors duration-300 toggle-track">
-                                <div
-                                    class="size-5 bg-white rounded-full shadow-md transition-transform duration-300 toggle-knob">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Obstacles -->
-                        <div id="uiToggleObstacles" onclick="toggleAdvancedMode('obstacleMode', 'uiToggleObstacles')"
-                            class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700/50 transition-colors cursor-pointer active:scale-[0.98]">
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="size-11 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined text-orange-500 text-[24px]">block</span>
-                                </div>
-                                <div>
-                                    <p class="text-slate-900 dark:text-slate-100 font-bold text-[14px] mb-0.5">Obstacles
-                                    </p>
-                                    <p class="text-slate-500 dark:text-slate-400 text-[11px] leading-tight">Cases mortes
-                                        aléatoires (Moyen par défaut)</p>
-                                </div>
-                            </div>
-                            <div
-                                class="w-12 h-7 bg-slate-200 dark:bg-slate-700 rounded-full relative p-1 flex items-center transition-colors duration-300 toggle-track">
-                                <div
-                                    class="size-5 bg-white rounded-full shadow-md transition-transform duration-300 toggle-knob">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="obstacleDensitySelector" class="mt-3">
-                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 mb-2">
-                            Densite obstacles</p>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button type="button" class="density-option" data-density="low"
-                                onclick="selectObstacleDensity('low')">Faible</button>
-                            <button type="button" class="density-option active" data-density="medium"
-                                onclick="selectObstacleDensity('medium')">Moyen</button>
-                            <button type="button" class="density-option" data-density="high"
-                                onclick="selectObstacleDensity('high')">Eleve</button>
-                        </div>
-                    </div>
-                </section>
-            </main>
-
-            <!-- Fix Bottom Action Bar -->
-            <div
-                class="absolute bottom-0 left-0 right-0 p-6 pt-4 ios-blur bg-background-light/90 dark:bg-background-dark/90 border-t border-slate-200 dark:border-slate-800/60 z-20">
-                <button onclick="handleSetupStart()" id="setupStartButton"
-                    class="w-full max-w-md mx-auto block bg-primary hover:bg-primary/95 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-xl shadow-primary/20 border border-primary/50">
-                    <span class="setup-start-label tracking-widest text-[13px] uppercase">Lancer la Partie</span>
-                    <span class="setup-start-icon material-symbols-outlined text-[22px]">play_arrow</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- SCREEN 3: LOBBY WEBRTC -->
-        <div id="screenLobby" class="relative z-10 flex flex-1 flex-col w-full h-full screen-hidden">
-            <header
-                class="flex items-center p-4 pb-2 justify-between shrink-0 bg-background-light/90 dark:bg-background-dark/90 ios-blur z-20">
-                <button onclick="disconnectBluetoothDevice(); navToScreen('screenMainMenu')"
-                    class="w-12 h-12 flex items-center justify-center bg-slate-200/50 dark:bg-slate-800/50 rounded-full transition-transform active:scale-95 text-slate-900 dark:text-white">
-                    <span class="material-symbols-outlined text-[24px]">close</span>
-                </button>
-                <h1 class="text-base font-bold tracking-widest uppercase flex-1 text-center">Multijoueur</h1>
-                <div id="connectionDot" class="w-3 h-3 rounded-full bg-slate-400 mr-2 shadow-[0_0_10px_currentColor]">
-                </div>
-            </header>
-
-            <main class="flex-1 flex flex-col px-6 space-y-8 max-w-md mx-auto w-full overflow-y-auto no-scrollbar pb-10">
-                <div class="mt-6">
-                    <label for="lobbyPlayerName"
-                        class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Votre
-                        pseudo</label>
-                    <input id="lobbyPlayerName" type="text" maxlength="20" placeholder="Entrez votre pseudo"
-                        oninput="syncLobbyPlayerName(this.value)"
-                        class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/70 px-4 py-3.5 text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all">
-                </div>
-
-                <div id="webrtcSelectionArea" class="flex flex-col gap-4 mt-8">
-                    <p class="text-center text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Choisissez votre
-                        rôle réseau</p>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button id="cardHost" onclick="selectWebRTCRole('host'); initNetworkSetupUI('host')"
-                            class="p-6 bg-white dark:bg-slate-800/80 border border-primary/30 rounded-3xl flex flex-col items-center gap-3 shadow-lg active:scale-95 transition-all">
-                            <span class="material-symbols-outlined text-4xl text-primary">cell_tower</span>
-                            <span class="font-bold text-sm">Héberger</span>
-                        </button>
-                        <button id="cardJoin" onclick="selectWebRTCRole('join'); initNetworkSetupUI('join')"
-                            class="p-6 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-3xl flex flex-col items-center gap-3 shadow-sm active:scale-95 transition-all">
-                            <span class="material-symbols-outlined text-4xl text-slate-400">login</span>
-                            <span class="font-bold text-sm text-slate-600 dark:text-slate-300">Rejoindre</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Host View -->
-                <div id="webrtcHostArea" class="hidden flex-col items-center space-y-6 pt-4 w-full">
-                    <span
-                        class="text-[10px] font-black tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase">Partie
-                        Hébergée</span>
-                    <div
-                        class="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 rounded-[28px] p-8 w-full shadow-sm text-center relative overflow-hidden">
-                        <div class="absolute inset-0 grid-bg opacity-30 pointer-events-none"></div>
-                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-3 relative z-10">Code
-                            Session</p>
-                        <h2 id="hostSessionCodeDisplay"
-                            class="text-4xl font-bold tracking-[0.25em] text-primary mb-8 relative z-10">------</h2>
-
-                        <div class="flex gap-3 relative z-10">
-                            <button id="btnCopyHostCode" data-default-label="Copier le Code" onclick="copyHostSessionCode()"
-                                class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl active:scale-95 transition-all text-xs">
-                                Copier le Code
-                            </button>
-                            <button id="btnCopyInviteLink" data-default-label="Copier le Lien" onclick="copySessionInviteLink()"
-                                class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl active:scale-95 transition-all text-xs">
-                                Copier le Lien
-                            </button>
-                        </div>
-
-                        <div class="relative z-10 mt-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-900/50 p-3">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-left">Invitation rapide</p>
-                            <div class="mt-2 flex items-center gap-3">
-                                <div class="size-[96px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
-                                    <img id="inviteQrImage" alt="QR code invitation" class="w-full h-full object-cover hidden" loading="lazy" />
-                                    <span id="inviteQrPlaceholder" class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">QR</span>
-                                </div>
-                                <div class="min-w-0 text-left">
-                                    <p class="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Scannez ce QR pour rejoindre</p>
-                                    <p id="inviteLinkPreview" class="mt-1 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 break-all">Lien indisponible.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="w-full">
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Codes recents</p>
-                        <div id="recentSessionCodesList" class="mt-2 flex flex-wrap gap-2"></div>
-                    </div>
-
-                    <button id="btnStartHosting" onclick="hostGame()" data-default-label="Démarrer le Serveur"
-                        class="w-full py-4 bg-primary text-white font-bold rounded-2xl active:scale-[0.98] transition-all shadow-lg shadow-primary/20 mt-4 tracking-widest text-sm uppercase">
-                        Démarrer le Serveur
-                    </button>
-
-                    <button onclick="goToHostSetupFromLobby()"
-                        class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-2xl active:scale-[0.98] transition-all text-xs uppercase tracking-widest border border-slate-200 dark:border-slate-700">
-                        Configurer la Partie
-                    </button>
-
-                    <div id="hostWaitingIndicator" class="hidden items-center gap-3 py-4 text-slate-500">
-                        <div class="spinner border-primary/30 border-t-primary"></div>
-                        <span class="text-sm font-medium">Attente des joueurs invites...</span>
-                    </div>
-                </div>
-
-                <!-- Join View -->
-                <div id="webrtcJoinArea" class="hidden flex-col items-center space-y-6 pt-4 w-full">
-                    <span
-                        class="text-[10px] font-black tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase">Rejoindre</span>
-
-                    <div class="w-full text-center">
-                        <input type="text" id="sessionCodeInput" maxlength="6" placeholder="CODE ICI"
-                            class="w-full bg-white dark:bg-slate-900/60 border-2 border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-6 text-center text-3xl font-bold tracking-[0.3em] focus:ring-4 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700 uppercase shadow-inner"
-                            oninput="normalizeSessionCodeInput()">
-                    </div>
-
-                    <button id="btnStartJoining" onclick="joinGame()" data-default-label="Se Connecter"
-                        class="w-full py-4 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl active:scale-[0.98] transition-all text-sm uppercase tracking-widest shadow-lg">
-                        Se Connecter
-                    </button>
-
-                    <p id="sessionCodePreview" class="text-xs text-center text-slate-500 mt-2">Saisissez les 6
-                        caractères fournis par l'hôte.</p>
-                </div>
-
-                <!-- Hidden advanced inputs needed by JS -->
-                <input type="text" id="signalingUrlInput" class="hidden" placeholder="wss://jeu-points.onrender.com/ws"
-                    oninput="persistSignalingUrlFromInput()">
-            </main>
-        </div>
-
-        <!-- SCREEN 4: SALON SESSION -->
-        <div id="screenSalon" class="relative z-10 flex flex-1 flex-col w-full h-full screen-hidden">
-            <header
-                class="flex items-center p-4 pb-2 justify-between shrink-0 bg-background-light/90 dark:bg-background-dark/90 ios-blur z-20">
-                <button onclick="navToScreen('screenLobby')"
-                    class="w-12 h-12 flex items-center justify-center bg-slate-200/50 dark:bg-slate-800/50 rounded-full transition-transform active:scale-95 text-slate-900 dark:text-white">
-                    <span class="material-symbols-outlined text-[24px]">arrow_back</span>
-                </button>
-                <h1 class="text-base font-bold tracking-widest uppercase flex-1 text-center">Salon</h1>
-                <button onclick="disconnectBluetoothDevice(); navToScreen('screenMainMenu')"
-                    class="w-12 h-12 flex items-center justify-center bg-slate-200/50 dark:bg-slate-800/50 rounded-full transition-transform active:scale-95 text-slate-900 dark:text-white">
-                    <span class="material-symbols-outlined text-[24px]">close</span>
-                </button>
-            </header>
-
-            <main class="flex-1 flex flex-col px-6 space-y-5 max-w-md mx-auto w-full overflow-y-auto no-scrollbar pb-10 pt-4">
-                <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/40 p-4">
-                    <p class="text-[10px] font-black tracking-[0.12em] uppercase text-primary">Actions Rapides</p>
-                    <div class="mt-3 grid grid-cols-2 gap-2">
-                        <button id="btnSalonCopyCode" onclick="copyHostSessionCodeFromSalon()"
-                            class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
-                            Copier code
-                        </button>
-                        <button id="btnSalonCopyLink" onclick="copySessionInviteLinkFromSalon()"
-                            class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
-                            Copier lien
-                        </button>
-                    </div>
-                    <div class="mt-2 grid grid-cols-2 gap-2">
-                        <button onclick="sendLobbyQuickMessage('ready')"
-                            class="py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
-                            Message: pret
-                        </button>
-                        <button onclick="sendLobbyQuickMessage('wait')"
-                            class="py-2.5 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
-                            Message: attente
-                        </button>
-                    </div>
-                </section>
-
-                <div id="lobbyStatusPanel"
-                    class="hidden p-4 bg-slate-100/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-2xl flex-col items-center gap-4 w-full">
-                    <p class="text-[10px] font-black tracking-[0.1em] uppercase text-primary mb-2">Statut du Salon</p>
-                    <div class="w-full">
-                        <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                            <span>Ready Check</span>
-                            <span id="lobbyReadySummary">0/0 prets</span>
-                        </div>
-                        <div class="mt-2 h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                            <div id="lobbyReadyProgressFill"
-                                class="h-full w-0 bg-primary transition-all duration-300 ease-out"></div>
-                        </div>
-                    </div>
-                    <div class="flex w-full justify-between items-center px-4">
-                        <div class="flex flex-col items-center">
-                            <span id="hostReadyName" class="font-bold text-sm">Hôte</span>
-                            <span id="hostReadyState" class="text-xs text-slate-500">Attente</span>
-                        </div>
-                        <span id="lobbyRoundState"
-                            class="text-[10px] py-1 px-2 rounded-full bg-slate-200 dark:bg-slate-800">Prêt</span>
-                        <div class="flex flex-col items-center">
-                            <span id="guestReadyName" class="font-bold text-sm">Adversaire</span>
-                            <span id="guestReadyState" class="text-xs text-slate-500">Attente</span>
-                        </div>
-                    </div>
-                    <div id="lobbyPlayersGrid" class="w-full grid grid-cols-1 gap-2"></div>
-                    <button id="btnLobbyPrimaryAction" onclick="handleLobbyPrimaryAction()"
-                        class="w-full py-3 px-4 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-[0.12em] active:scale-[0.98] transition-all shadow-lg shadow-primary/20 disabled:opacity-40">
-                        Action Lobby
-                    </button>
-                    <div class="hidden" id="hostReadyChip"></div>
-                    <div class="hidden" id="guestReadyChip"></div>
-                    <div class="hidden" id="lobbySessionLabel"></div>
-                    <div id="lobbyActionRow" class="w-full grid grid-cols-2 gap-2 pt-1">
-                        <button id="btnLobbyRematch" onclick="requestOnlineRematch()"
-                            class="hidden py-2.5 px-3 rounded-xl bg-primary/90 text-white text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
-                            Rejouer sans deco
-                        </button>
-                        <button id="btnLobbyBackToGame" onclick="showGameView()"
-                            class="hidden py-2.5 px-3 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all">
-                            Retour partie
-                        </button>
-                    </div>
-                </div>
-
-                <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/40 p-4">
-                    <div class="flex items-center justify-between gap-2">
-                        <p class="text-[10px] font-black tracking-[0.12em] uppercase text-primary">Activite Salon</p>
-                        <button onclick="clearLobbyActivityFeed()"
-                            class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all">
-                            Effacer
-                        </button>
-                    </div>
-                    <div id="lobbyActivityFeed"
-                        class="mt-3 max-h-40 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-900/60 p-2.5 space-y-2">
-                    </div>
-                </section>
-            </main>
-        </div>
-
-        <!-- SCREEN 5: ACTIVE GAME -->
-        <div id="screenGame"
-            class="relative flex flex-1 flex-col w-full h-[100dvh] screen-hidden bg-background-light dark:bg-background-dark">
-            <header class="flex items-center justify-between px-5 pt-6 pb-4 shrink-0 relative inset-x-0 top-0 z-30">
-                <button onclick="confirmRestart()"
-                    class="w-11 h-11 flex items-center justify-center rounded-full bg-slate-800/80 border border-slate-700/50 backdrop-blur-md active:scale-90 transition-transform">
-                    <span class="material-symbols-outlined text-slate-200 text-[22px]">exit_to_app</span>
-                </button>
-                <div class="text-center flex-1">
-                    <h1 class="text-[17px] font-bold tracking-tight text-slate-900 dark:text-white mb-0.5">Jeu des
-                        Points</h1>
-                    <p id="turnTimer" class="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">Classique
-                    </p>
-                </div>
-                <button onclick="undoLastMove()" id="undoButton"
-                    class="w-11 h-11 flex items-center justify-center rounded-full bg-slate-800/80 border border-slate-700/50 backdrop-blur-md active:scale-90 transition-all disabled:opacity-30 disabled:scale-100 disabled:cursor-not-allowed">
-                    <span class="material-symbols-outlined text-slate-200 text-[22px]">undo</span>
-                </button>
-            </header>
-
-            <!-- Player Scores Banner -->
-            <section class="px-3 pt-1 pb-1.5 grid grid-cols-2 gap-1.5 z-30 shrink-0" id="playerScoresHeader">
-                <!-- Injected by updateUI() wrapper -->
-            </section>
-
-            <!-- Main Grid Area -->
-            <main class="flex-1 flex flex-col items-center justify-center p-4 relative min-h-0 w-full overflow-hidden">
-                <!-- Actual Grid Container -->
-                <div
-                    class="grid-wrapper relative aspect-square bg-white/95 dark:bg-[#0d131a] rounded-[24px] border border-slate-300/80 dark:border-[#1e293b] p-[4.5vmin] sm:p-7 shadow-[0_16px_45px_-16px_rgba(15,23,42,0.35)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)] flex items-center justify-center">
-                    <div id="grid" class="point-grid w-full h-full relative" aria-label="Grille de jeu"></div>
-
-                    <!-- Match Countdown inside grid -->
-                    <div id="matchCountdownOverlay"
-                        class="absolute inset-0 z-50 flex items-center justify-center flex-col bg-slate-900/60 backdrop-blur-sm rounded-[24px] pointer-events-none transition-opacity duration-300 opacity-0"
-                        aria-live="polite">
-                        <div
-                            class="bg-[#0b1016]/90 border border-slate-700/50 p-6 rounded-3xl text-center shadow-2xl flex flex-col items-center">
-                            <div id="matchCountdownValue" class="text-7xl font-black text-white mb-2"
-                                style="text-shadow: 0 0 30px rgba(255,255,255,0.2);">3</div>
-                            <div id="matchCountdownLabel"
-                                class="text-xs uppercase tracking-[0.2em] font-bold text-primary">La manche commence
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Gravity Overlay -->
-                    <div id="gravityOverlay"
-                        class="absolute inset-0 z-40 bg-blue-500/10 backdrop-blur-[2px] rounded-[24px] flex flex-col items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300">
-                        <div class="text-center scale-75 transform"
-                            style="animation: gravityPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;">
-                            <div id="gravityOverlayIcon"
-                                class="text-6xl text-white mb-4 drop-shadow-[0_0_20px_rgba(59,130,246,0.8)]">↓</div>
-                            <h2 class="text-2xl text-white font-black uppercase tracking-[0.25em] m-0 drop-shadow-md">
-                                GRAVITY SHIFT</h2>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            <section class="px-4 pb-2 flex justify-center z-30 pointer-events-none shrink-0">
-                <div id="turnHintWrapper"
-                    class="max-w-full bg-slate-800/90 backdrop-blur-md border border-slate-700/60 px-4 py-2 rounded-full shadow-lg flex items-center gap-2 opacity-0 invisible translate-y-2 transition-all duration-300">
-                    <span class="material-symbols-outlined text-[15px] text-primary shrink-0">info</span>
-                    <p id="turnHint" class="text-[11px] font-semibold tracking-wide text-slate-200 m-0 text-center">
-                        Selectionnez un point libre sur la grille.
-                    </p>
-                </div>
-            </section>
-
-            <!-- Status Bar (Gravity, Obstacles, Progress) -->
-            <section
-                class="px-5 py-4 flex justify-between items-center bg-slate-900/60 border-t border-slate-800/80 backdrop-blur-md shrink-0 relative z-30">
-                <!-- Gravity Info -->
-                <div id="gravityPanel" class="flex items-center gap-3 hidden">
-                    <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                        <span id="gravityIcon"
-                            class="material-symbols-outlined text-blue-500 text-[18px] transition-transform duration-500">arrow_downward</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-1">
-                            Gravité <span id="gravityDirectionText" class="hidden">Bas</span></p>
-                        <p class="text-xs font-bold text-white"><span id="movesUntilShift"
-                                class="text-blue-400">10</span> coups</p>
-                    </div>
-                </div>
-
-                <div id="gravitySpacer" class="h-8 w-px bg-slate-700/50 mx-2 hidden"></div>
-
-                <!-- Progress / Obstacles Info -->
-                <div class="flex items-center gap-3 ml-auto">
-                    <div class="flex flex-col text-right">
-                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-1">
-                            Progression</p>
-                        <p class="text-xs font-bold text-white" id="progressCount">0 / 0</p>
-                        <p id="obstacleCountBadge"
-                            class="mt-1 inline-flex items-center justify-end gap-1.5 rounded-full border border-orange-400/35 bg-orange-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-200"
-                            style="display: none;">
-                            <span class="material-symbols-outlined text-[12px] leading-none">block</span>
-                            <span id="obstacleCountText">0 obstacle</span>
-                        </p>
-                    </div>
-                    <div
-                        class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center relative shadow-inner overflow-hidden shrink-0">
-                        <!-- Circular progress bar trick via conic-gradient, handled via JS inline style trick if needed, or just icon -->
-                        <span class="material-symbols-outlined text-primary text-[16px]">pie_chart</span>
-                        <div id="progressBar" class="absolute bottom-0 left-0 w-full bg-primary/40"
-                            style="height: 0%; transition: height 0.3s ease;"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Very bottom small tools bar -->
-            <nav
-                class="bg-[#0a0e14] border-t border-slate-800 px-4 pb-6 pt-3 flex justify-between items-center shrink-0 relative z-30">
-                <button onclick="showRules()"
-                    class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-white transition-colors">
-                    <span class="material-symbols-outlined text-[20px]">menu_book</span>
-                    <span class="text-[9px] font-bold uppercase tracking-widest">Règles</span>
-                </button>
-                <button id="soundButton" onclick="toggleSound()"
-                    class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-white transition-colors">
-                    <span class="material-symbols-outlined text-[20px]">volume_up</span>
-                    <span class="text-[9px] font-bold uppercase tracking-widest">Son</span>
-                </button>
-                <button id="reconnectButton" onclick="manualReconnect()"
-                    class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-white transition-colors disabled:opacity-30">
-                    <span class="material-symbols-outlined text-[20px]">sync</span>
-                    <span class="text-[9px] font-bold uppercase tracking-widest">Réseau</span>
-                </button>
-                <button onclick="document.documentElement.classList.toggle('dark')"
-                    class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-white transition-colors">
-                    <span class="material-symbols-outlined text-[20px]">contrast</span>
-                    <span class="text-[9px] font-bold uppercase tracking-widest">Thème</span>
-                </button>
-                <button id="lobbyButton" onclick="openOnlineLobby()"
-                    class="hidden flex-col items-center gap-1.5 text-slate-400 hover:text-white transition-colors disabled:opacity-30">
-                    <span class="material-symbols-outlined text-[20px]">groups</span>
-                    <span class="text-[9px] font-bold uppercase tracking-widest">Salon</span>
-                </button>
-            </nav>
-
-            <!-- Background decorative lines -->
-            <div class="absolute inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-screen"
-                style="background-image: linear-gradient(30deg, #137fec 12%, transparent 12.5%, transparent 87%, #137fec 87.5%, #137fec), linear-gradient(150deg, #137fec 12%, transparent 12.5%, transparent 87%, #137fec 87.5%, #137fec), linear-gradient(30deg, #137fec 12%, transparent 12.5%, transparent 87%, #137fec 87.5%, #137fec), linear-gradient(150deg, #137fec 12%, transparent 12.5%, transparent 87%, #137fec 87.5%, #137fec), linear-gradient(60deg, #137fec 25%, transparent 25.5%, transparent 75%, #137fec 75%, #137fec), linear-gradient(60deg, #137fec 25%, transparent 25.5%, transparent 75%, #137fec 75%, #137fec); background-size: 80px 140px; background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;">
-            </div>
-        </div>
-
-        <!-- Modals & Toasts (Outside screens to overlay anywhere) -->
-        <div id="rulesModal"
-            class="modal hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div
-                class="bg-white dark:bg-slate-800 rounded-3xl max-w-sm w-full p-8 shadow-2xl border border-slate-200 dark:border-slate-700">
-                <h2 class="text-2xl font-bold mb-4 dark:text-white text-slate-900">Règles du jeu</h2>
-                <ul class="space-y-3 mb-8 text-sm dark:text-slate-300 text-slate-600 font-medium">
-                    <li class="flex gap-2"><span class="text-primary">•</span> Les joueurs placent un point à tour de
-                        rôle.</li>
-                    <li class="flex gap-2"><span class="text-primary">•</span> Un carré complet avec vos 4 points
-                        rapporte 1 point.</li>
-                    <li class="flex gap-2"><span class="text-primary">•</span> La partie se termine quand la grille est
-                        pleine, le meilleur score gagne.</li>
-                </ul>
-                <button onclick="hideRules()"
-                    class="w-full bg-slate-200 dark:bg-slate-700 dark:text-white text-slate-900 font-bold py-3.5 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">Fermer</button>
-            </div>
-        </div>
-
-        <div id="confirmModal"
-            class="modal hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-[2px]">
-            <div
-                class="bg-white dark:bg-slate-800 rounded-3xl max-w-[320px] w-full p-8 shadow-2xl border border-slate-200 dark:border-slate-700 text-center">
-                <div
-                    class="w-16 h-16 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
-                    <span class="material-symbols-outlined text-[32px]">warning</span>
-                </div>
-                <h2 class="text-xl font-bold mb-2 dark:text-white text-slate-900">Nouvelle partie</h2>
-                <p class="mb-8 text-sm dark:text-slate-400 text-slate-500">Voulez-vous vraiment quitter et recommencer ?
-                </p>
-                <div class="flex gap-3">
-                    <button onclick="hideConfirmModal()"
-                        class="flex-1 bg-slate-100 dark:bg-slate-700 dark:text-white text-slate-700 font-bold py-3.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Annuler</button>
-                    <button onclick="restartGame()"
-                        class="flex-1 bg-red-500 text-white font-bold py-3.5 rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">Quitter</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="toastContainer" class="toast-container" aria-live="polite"></div>
-
-        <!-- Hidden elements just to satisfy JS bindings if they are unused visually -->
-        <div id="gameHint" class="hidden"></div>
-        <div id="playerScores" class="hidden"></div>
-        <div id="turnIndicator" class="hidden"></div>
-        <div id="turnDot" class="hidden"></div>
-        <div id="turnText" class="hidden"></div>
-        <div id="bluetoothStatus" class="hidden"><button id="bluetoothStatusToggle" class="hidden"></button></div>
-
-    </div>
-
-    <!-- Core script -->
-    <script>
 
         // --- NOUVELLES FONCTIONS DE NAVIGATION STITCH ---
-        function getManagedScreenIds() {
-            return ['screenMainMenu', 'screenSetup', 'screenLobby', 'screenSalon', 'screenGame'];
-        }
-
-        function detectCurrentScreenId() {
-            const screens = getManagedScreenIds();
-            for (const id of screens) {
-                const el = document.getElementById(id);
-                if (el && !el.classList.contains('screen-hidden')) {
-                    return id;
-                }
-            }
-            return currentScreenId || 'screenMainMenu';
-        }
-
         function navToScreen(targetScreenId) {
-            const screens = getManagedScreenIds();
+            const screens = ['screenMainMenu', 'screenSetup', 'screenLobby', 'screenGame'];
             screens.forEach(id => {
                 const el = document.getElementById(id);
                 if(el) el.classList.add('screen-hidden');
             });
             const target = document.getElementById(targetScreenId);
-            if(target) {
-                target.classList.remove('screen-hidden');
-                currentScreenId = targetScreenId;
-            } else {
-                currentScreenId = detectCurrentScreenId();
-            }
-            persistAppSessionState();
+            if(target) target.classList.remove('screen-hidden');
         }
 
         function showGameView() {
@@ -2408,7 +854,6 @@
                 setTimeout(() => document.getElementById('sessionCodeInput')?.focus(), 50);
             }
             updateWebRTCActionButtons();
-            refreshHostInviteTools();
             if (soundEnabled) playSound('click');
         }
 
@@ -2625,321 +1070,6 @@
                 if (!element) return;
                 element.addEventListener('change', saveSetupPreferences);
                 element.addEventListener('input', saveSetupPreferences);
-            });
-        }
-
-        function clearAppSessionState() {
-            try {
-                if (!window.sessionStorage) return;
-                sessionStorage.removeItem(APP_SESSION_STATE_STORAGE_KEY);
-            } catch (_error) {
-                // Ignore storage errors.
-            }
-        }
-
-        function readAppSessionState() {
-            try {
-                if (!window.sessionStorage) return null;
-                const raw = sessionStorage.getItem(APP_SESSION_STATE_STORAGE_KEY);
-                if (!raw) return null;
-                const parsed = JSON.parse(raw);
-                if (!parsed || typeof parsed !== 'object') return null;
-                return parsed;
-            } catch (_error) {
-                return null;
-            }
-        }
-
-        function writeAppSessionState(state) {
-            if (!state || typeof state !== 'object') return;
-            try {
-                if (!window.sessionStorage) return;
-                sessionStorage.setItem(APP_SESSION_STATE_STORAGE_KEY, JSON.stringify(state));
-            } catch (_error) {
-                // Ignore storage errors.
-            }
-        }
-
-        function sanitizeGameMode(value) {
-            const normalized = String(value || '').trim();
-            return ['2players', '3players', '4players', 'ai', 'bluetooth'].includes(normalized)
-                ? normalized
-                : '2players';
-        }
-
-        function restoreGameModeSelection(gameMode) {
-            const normalized = sanitizeGameMode(gameMode);
-            const modeInput = document.getElementById('gameMode');
-            if (modeInput) {
-                modeInput.value = normalized;
-            }
-            if (typeof updatePlayerCards === 'function') {
-                updatePlayerCards();
-            }
-            return normalized;
-        }
-
-        function collectAppSessionState() {
-            const activeScreenId = detectCurrentScreenId();
-            const gameMode = sanitizeGameMode(document.getElementById('gameMode')?.value ?? '2players');
-            const state = {
-                version: APP_SESSION_STATE_VERSION,
-                savedAt: Date.now(),
-                screenId: activeScreenId,
-                gameMode
-            };
-
-            const shouldPersistOnline = activeScreenId !== 'screenMainMenu' &&
-                (gameMode === 'bluetooth' || Boolean(bluetoothConnection));
-            if (shouldPersistOnline) {
-                const sessionCode = sanitizeSessionCode(
-                    connectionStatus.sessionCode ||
-                    bluetoothConnection?.sessionCode ||
-                    bluetoothSession.expectedCode ||
-                    bluetoothSession.code ||
-                    ''
-                );
-                state.online = {
-                    role: isHost ? 'host' : 'join',
-                    sessionCode: sessionCode || null
-                };
-                return state;
-            }
-
-            if (
-                activeScreenId === 'screenGame' &&
-                gameMode !== 'bluetooth' &&
-                window.game &&
-                typeof window.game.createSnapshot === 'function'
-            ) {
-                state.localGame = {
-                    withAI: Boolean(window.game.withAI),
-                    aiDifficulty: window.game.withAI
-                        ? String(window.game.ai?.difficulty || document.getElementById('aiDifficulty')?.value || 'hard')
-                        : null,
-                    snapshot: window.game.createSnapshot()
-                };
-            }
-
-            return state;
-        }
-
-        function persistAppSessionState() {
-            if (sessionStateRestoreInProgress) return;
-            writeAppSessionState(collectAppSessionState());
-        }
-
-        function restoreLocalGameFromSessionState(sessionState) {
-            const localGame = sessionState?.localGame;
-            const snapshot = localGame?.snapshot;
-            if (!snapshot || !Array.isArray(snapshot.players) || snapshot.players.length < 2) {
-                return false;
-            }
-
-            const withAI = Boolean(localGame.withAI);
-            const restoredPlayers = snapshot.players.slice(0, 4).map((player, index) => {
-                const fallbackName = withAI && index === 1 ? 'IA' : `Joueur ${index + 1}`;
-                const name = normalizePlayerName(player?.name, fallbackName);
-                const color = (typeof player?.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(player.color))
-                    ? player.color
-                    : getPlayerColor(`player${index + 1}Color`, '#328DCB');
-                return { name, color };
-            });
-
-            if (restoredPlayers.length < 2) {
-                return false;
-            }
-
-            const derivedMode = withAI
-                ? 'ai'
-                : sanitizeGameMode(`${Math.min(4, Math.max(2, restoredPlayers.length))}players`);
-            restoreGameModeSelection(derivedMode);
-
-            restoredPlayers.forEach((player, index) => {
-                const inputIndex = index + 1;
-                const nameInput = document.getElementById(`player${inputIndex}Name`);
-                const colorInput = document.getElementById(`player${inputIndex}Color`);
-                if (nameInput) {
-                    nameInput.value = player.name;
-                }
-                if (colorInput && /^#[0-9a-fA-F]{6}$/.test(player.color)) {
-                    colorInput.value = player.color;
-                }
-            });
-
-            const turnDurationMs = Number.parseInt(snapshot.turnDurationMs, 10);
-            const gameOptions = {
-                blitzEnabled: Boolean(snapshot.blitzEnabled),
-                blitzTurnSeconds: Number.isFinite(turnDurationMs) && turnDurationMs > 0
-                    ? normalizeBlitzTurnSeconds(turnDurationMs / 1000)
-                    : 10,
-                gravityEnabled: Boolean(snapshot.gravityEnabled),
-                hyperNexusEnabled: Boolean(snapshot.hyperNexusEnabled),
-                obstacleEnabled: Boolean(snapshot.obstacleEnabled),
-                obstacleDensity: normalizeObstacleDensity(snapshot.obstacleDensity)
-            };
-
-            if (withAI) {
-                const aiDifficultyInput = document.getElementById('aiDifficulty');
-                if (aiDifficultyInput && localGame.aiDifficulty) {
-                    aiDifficultyInput.value = String(localGame.aiDifficulty);
-                }
-            }
-
-            moveHistory = [];
-            showGameView();
-            window.game = new Game(
-                restoredPlayers,
-                withAI,
-                normalizeGridSize(snapshot.size ?? 8),
-                gameOptions
-            );
-
-            if (withAI && window.game.ai && localGame.aiDifficulty) {
-                window.game.ai.difficulty = String(localGame.aiDifficulty);
-            }
-
-            window.game.restoreSnapshot(snapshot, true);
-
-            if (withAI && !window.game.gameOver && window.game.currentPlayerIndex === 1) {
-                window.game.handleAITurn().catch((error) => {
-                    console.error('Erreur reprise IA:', error);
-                });
-            }
-
-            updateWebRTCActionButtons();
-            showToast('Partie restauree apres actualisation.', 'success', 2200);
-            return true;
-        }
-
-        function restoreOnlineLobbyFromSessionState(sessionState) {
-            const mode = sanitizeGameMode(sessionState?.gameMode);
-            const onlineState = sessionState?.online;
-            const savedScreenId = String(sessionState?.screenId || '');
-            const shouldRestoreOnline = Boolean(onlineState) || (
-                mode === 'bluetooth' &&
-                ['screenSetup', 'screenLobby', 'screenSalon', 'screenGame'].includes(savedScreenId)
-            );
-            if (!shouldRestoreOnline) {
-                return false;
-            }
-
-            restoreGameModeSelection('bluetooth');
-
-            const role = onlineState?.role === 'host' ? 'host' : 'join';
-            const sessionCode = sanitizeSessionCode(onlineState?.sessionCode || '');
-            const sessionInput = document.getElementById('sessionCodeInput');
-            if (sessionCode) {
-                if (sessionInput) {
-                    sessionInput.value = sessionCode;
-                }
-                bluetoothSession.expectedCode = sessionCode;
-                if (role === 'host') {
-                    bluetoothSession.code = sessionCode;
-                }
-            }
-
-            selectWebRTCRole(role);
-            initNetworkSetupUI(role);
-
-            if (sessionCode) {
-                if (role === 'host') {
-                    setHostSessionCodeDisplay(sessionCode, { trackRecent: true });
-                    setSessionCodePreview(`Code restaure: ${sessionCode}`);
-                } else {
-                    setSessionCodePreview(`Code restaure: ${sessionCode}. Reconnectez-vous.`);
-                }
-            }
-
-            const targetScreenId = (savedScreenId === 'screenSalon' || savedScreenId === 'screenGame')
-                ? 'screenSalon'
-                : 'screenLobby';
-            navToScreen(targetScreenId);
-            updateLobbyHint();
-            updateWebRTCActionButtons();
-            showToast('Session en ligne restauree. Reconnectez-vous.', 'info', 2600);
-            return true;
-        }
-
-        function hasExplicitNavigationParams() {
-            try {
-                const params = new URLSearchParams(window.location.search || '');
-                return params.has('mode') || params.has('role') || params.has('session');
-            } catch (_error) {
-                return false;
-            }
-        }
-
-        function restoreAppSessionStateOnLoad() {
-            if (hasExplicitNavigationParams()) {
-                return false;
-            }
-
-            const sessionState = readAppSessionState();
-            if (!sessionState) {
-                return false;
-            }
-
-            const version = Number.parseInt(sessionState.version, 10);
-            if (version !== APP_SESSION_STATE_VERSION) {
-                clearAppSessionState();
-                return false;
-            }
-
-            const savedAt = Number.parseInt(sessionState.savedAt, 10);
-            if (!Number.isFinite(savedAt) || (Date.now() - savedAt) > APP_SESSION_STATE_MAX_AGE_MS) {
-                clearAppSessionState();
-                return false;
-            }
-
-            sessionStateRestoreInProgress = true;
-            let restored = false;
-            try {
-                const gameMode = restoreGameModeSelection(sessionState.gameMode || '2players');
-                if (gameMode === 'bluetooth' || sessionState.online) {
-                    restored = restoreOnlineLobbyFromSessionState(sessionState);
-                } else if (sessionState.localGame) {
-                    restored = restoreLocalGameFromSessionState(sessionState);
-                }
-
-                if (!restored) {
-                    const savedScreenId = String(sessionState.screenId || '');
-                    if (savedScreenId === 'screenSetup') {
-                        navToScreen('screenSetup');
-                        restored = true;
-                    } else if (savedScreenId === 'screenLobby') {
-                        navToScreen('screenLobby');
-                        restored = true;
-                    } else if (savedScreenId === 'screenSalon') {
-                        navToScreen('screenLobby');
-                        restored = true;
-                    }
-                }
-            } catch (error) {
-                console.error('Erreur restauration session:', error);
-                clearAppSessionState();
-                restored = false;
-            } finally {
-                sessionStateRestoreInProgress = false;
-            }
-
-            if (restored) {
-                persistAppSessionState();
-            }
-            return restored;
-        }
-
-        function installAppSessionStateAutoSaveHooks() {
-            window.addEventListener('beforeunload', () => {
-                persistAppSessionState();
-            });
-            window.addEventListener('pagehide', () => {
-                persistAppSessionState();
-            });
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'hidden') {
-                    persistAppSessionState();
-                }
             });
         }
 
@@ -3180,8 +1310,6 @@
                 this.gravityDirection = 'down';
                 this.movesUntilShiftCount = 10;
                 this.initialMovesUntilShift = 10;
-                this.isGravityAnimating = false;
-                this.gravityFinalizeTimeoutId = null;
 
                 // Hyper-Nexus properties
                 this.hyperNexusEnabled = Boolean(options.hyperNexusEnabled);
@@ -3222,11 +1350,6 @@
                 this.timedOutPlayerIndex = null;
                 moveHistory = [];
                 this.stopTurnTimer();
-                this.isGravityAnimating = false;
-                if (this.gravityFinalizeTimeoutId) {
-                    clearTimeout(this.gravityFinalizeTimeoutId);
-                    this.gravityFinalizeTimeoutId = null;
-                }
 
                 const undoButton = document.getElementById('undoButton');
                 if (undoButton) {
@@ -3493,7 +1616,7 @@
 
             isLocalTurn() {
                 if (this.withAI) {
-                    return this.currentPlayerIndex === 0 && !this.isGravityAnimating;
+                    return this.currentPlayerIndex === 0;
                 }
 
                 if (bluetoothConnection) {
@@ -3503,14 +1626,11 @@
                     if (!networkMatchState.started) {
                         return false;
                     }
-                    if (this.isGravityAnimating) {
-                        return false;
-                    }
                     const localIndices = getLocalPlayerIndices(this.players.length);
                     return localIndices.includes(this.currentPlayerIndex);
                 }
 
-                return !this.isGravityAnimating;
+                return true;
             }
 
             getRemainingTurnMs() {
@@ -3678,22 +1798,12 @@
                 if (this.gameOver) return false;
 
                 this.gameOver = true;
-                this.isGravityAnimating = false;
-                if (this.gravityFinalizeTimeoutId) {
-                    clearTimeout(this.gravityFinalizeTimeoutId);
-                    this.gravityFinalizeTimeoutId = null;
-                }
                 this.endReason = reason;
                 this.timedOutPlayerIndex = Number.isInteger(timedOutPlayerIndex) ? timedOutPlayerIndex : null;
                 this.stopTurnTimer();
                 this.refreshTurnTimerUI();
                 this.updateUI();
                 this.showGameOverScreen();
-                if (bluetoothConnection) {
-                    onOnlineMatchFinished().catch((error) => {
-                        console.error('Erreur de transition vers le salon:', error);
-                    });
-                }
                 return true;
             }
 
@@ -3723,11 +1833,6 @@
 
             restoreSnapshot(snapshot, clearHistory = false) {
                 if (!snapshot) return;
-                if (this.gravityFinalizeTimeoutId) {
-                    clearTimeout(this.gravityFinalizeTimeoutId);
-                    this.gravityFinalizeTimeoutId = null;
-                }
-                this.isGravityAnimating = false;
 
                 if (snapshot.size !== undefined) {
                     this.size = normalizeGridSize(snapshot.size);
@@ -3895,7 +2000,6 @@
 
             async handlePointClick(x, y, source = 'local', forcedPlayerIndex = null) {
                 if (this.gameOver) return;
-                if (this.isGravityAnimating) return;
 
                 if (source === 'local' && !this.isLocalTurn()) return;
                 if (source === 'remote' && this.isLocalTurn()) return;
@@ -3939,8 +2043,7 @@
                 if (bluetoothConnection && source === 'local') {
                     const sent = await sendBluetoothData({
                         type: 'move',
-                        move: { x, y },
-                        playerIndex: actingPlayerIndex
+                        move: { x, y }
                     });
                     if (!sent) {
                         const previousState = moveHistory.pop();
@@ -3956,22 +2059,19 @@
                     this.nextTurn();
                 }
 
-                let gravityTriggered = false;
                 if (this.gravityEnabled && source !== 'nexus') {
                     this.movesUntilShiftCount--;
                     if (this.movesUntilShiftCount <= 3 && this.movesUntilShiftCount > 0) {
                         if (soundEnabled) playSound('warning');
                     }
                     if (this.movesUntilShiftCount <= 0) {
-                        gravityTriggered = this.applyGravityShift(actingPlayerIndex);
+                        this.applyGravityShift(actingPlayerIndex);
                     }
                 }
                 this.updateUI();
-                if (!gravityTriggered) {
-                    this.checkGameEnd();
-                }
+                this.checkGameEnd();
 
-                if (this.withAI && source !== 'ai' && !isNexus && !gravityTriggered) {
+                if (this.withAI && source !== 'ai' && !isNexus) {
                     await this.handleAITurn();
                 }
             }
@@ -4065,10 +2165,7 @@
                 if (boxesLayer) {
                     boxesLayer.appendChild(box);
                 } else {
-                    const grid = document.getElementById('grid');
-                    if (grid) {
-                        grid.appendChild(box);
-                    }
+                    document.getElementById('grid').appendChild(box);
                 }
 
                 if (typeof triggerConfetti === 'function') {
@@ -4096,13 +2193,9 @@
 
             refreshGravityIndicator() {
                 const panel = document.getElementById('gravityPanel');
-                const spacer = document.getElementById('gravitySpacer');
                 if (panel) {
-                    panel.style.display = this.gravityEnabled ? 'flex' : 'none';
+                    panel.style.display = this.gravityEnabled ? 'block' : 'none';
                     panel.classList.toggle('gravity-glow', this.gravityEnabled && this.movesUntilShiftCount <= 3);
-                }
-                if (spacer) {
-                    spacer.style.display = this.gravityEnabled ? 'block' : 'none';
                 }
 
                 if (!this.gravityEnabled) return;
@@ -4111,7 +2204,7 @@
                 const dirTextEl = document.getElementById('gravityDirectionText');
                 const iconEl = document.getElementById('gravityIcon');
 
-                if (movesEl) movesEl.textContent = this.isGravityAnimating ? '...' : this.movesUntilShiftCount;
+                if (movesEl) movesEl.textContent = this.movesUntilShiftCount;
                 if (dirTextEl) dirTextEl.textContent = this.getGravityDirectionName();
                 if (iconEl) iconEl.style.transform = `rotate(${this.getGravityRotationDegrees()}deg)`;
             }
@@ -4126,151 +2219,116 @@
                 }
             }
 
-            getShiftedCoordinates(x, y, direction, distance = 1) {
-                let nx = x;
-                let ny = y;
-                if (direction === 'down') ny += distance;
-                else if (direction === 'up') ny -= distance;
-                else if (direction === 'left') nx -= distance;
-                else if (direction === 'right') nx += distance;
-                return { x: nx, y: ny };
-            }
+            applyGravityShift(triggeringPlayerIndex = null) {
+                const directions = ['up', 'down', 'left', 'right'];
+                let newDirection = this.gravityDirection;
+                while (newDirection === this.gravityDirection) {
+                    newDirection = directions[Math.floor(Math.random() * directions.length)];
+                }
+                this.gravityDirection = newDirection;
+                this.movesUntilShiftCount = this.initialMovesUntilShift;
+                this.refreshGravityIndicator();
 
-            getClusterSortComparator(direction) {
-                return (a, b) => {
+                const cellSize = 100 / this.size;
+
+                // Overlay sequence
+                const overlay = document.getElementById('gravityOverlay');
+                const overlayIcon = document.getElementById('gravityOverlayIcon');
+                if (overlay) {
+                    const rot = this.getGravityRotationDegrees();
+                    if (overlayIcon) overlayIcon.style.transform = `rotate(${rot}deg)`;
+
+                    overlay.style.display = 'flex';
+                    setTimeout(() => overlay.style.opacity = '1', 10);
+                    if (soundEnabled) playSound('shift_slide');
+                    setTimeout(() => {
+                        overlay.style.opacity = '0';
+                        setTimeout(() => overlay.style.display = 'none', 400);
+                    }, 1200);
+                }
+
+                // 1. Group points into clusters (connected by squares)
+                const clusters = this.findClusters();
+
+                // 2. Sort clusters by their position according to gravity direction
+                // to avoid collisions between moving clusters
+                clusters.sort((a, b) => {
                     const boundsA = this.getClusterBounds(a);
                     const boundsB = this.getClusterBounds(b);
-                    if (direction === 'down') return boundsB.maxY - boundsA.maxY;
-                    if (direction === 'up') return boundsA.minY - boundsB.minY;
-                    if (direction === 'right') return boundsB.maxX - boundsA.maxX;
-                    if (direction === 'left') return boundsA.minX - boundsB.minX;
+                    if (this.gravityDirection === 'down') return boundsB.maxY - boundsA.maxY;
+                    if (this.gravityDirection === 'up') return boundsA.minY - boundsB.minY;
+                    if (this.gravityDirection === 'right') return boundsB.maxX - boundsA.maxX;
+                    if (this.gravityDirection === 'left') return boundsA.minX - boundsB.minX;
                     return 0;
-                };
-            }
+                });
 
-            getGravitySlidePlan(direction, clusters) {
-                const sortedClusters = [...clusters].sort(this.getClusterSortComparator(direction));
+                const newPoints = new Map();
+                const newBoxes = new Map();
+
+                // Track occupied positions as we move clusters
                 const occupied = new Set(this.obstacleEnabled ? this.obstacles : []);
-                this.points.forEach((_owner, key) => occupied.add(key));
 
-                const plan = [];
-                let totalSlide = 0;
-
-                sortedClusters.forEach((cluster) => {
-                    cluster.points.forEach((pointKey) => occupied.delete(pointKey));
-
+                clusters.forEach(cluster => {
                     let slideDistance = 0;
-                    while (true) {
-                        const nextDistance = slideDistance + 1;
-                        let canMove = true;
+                    let canMove = true;
 
+                    while (canMove) {
+                        const nextDistance = slideDistance + 1;
                         for (const pointKey of cluster.points) {
-                            const [px, py] = pointKey.split(',').map(Number);
-                            const shifted = this.getShiftedCoordinates(px, py, direction, nextDistance);
-                            const shiftedKey = `${shifted.x},${shifted.y}`;
-                            if (
-                                shifted.x < 0 ||
-                                shifted.x > this.size ||
-                                shifted.y < 0 ||
-                                shifted.y > this.size ||
-                                occupied.has(shiftedKey)
-                            ) {
+                            let [x, y] = pointKey.split(',').map(Number);
+                            if (this.gravityDirection === 'down') y += nextDistance;
+                            else if (this.gravityDirection === 'up') y -= nextDistance;
+                            else if (this.gravityDirection === 'left') x -= nextDistance;
+                            else if (this.gravityDirection === 'right') x += nextDistance;
+
+                            if (x < 0 || x > this.size || y < 0 || y > this.size || occupied.has(`${x},${y}`)) {
                                 canMove = false;
                                 break;
                             }
                         }
-
-                        if (!canMove) break;
-                        slideDistance = nextDistance;
+                        if (canMove) slideDistance = nextDistance;
                     }
 
-                    cluster.points.forEach((pointKey) => {
-                        const [px, py] = pointKey.split(',').map(Number);
-                        const shifted = this.getShiftedCoordinates(px, py, direction, slideDistance);
-                        occupied.add(`${shifted.x},${shifted.y}`);
-                    });
-
-                    totalSlide += slideDistance * cluster.points.length;
-                    plan.push({ cluster, slideDistance });
-                });
-
-                return { plan, totalSlide };
-            }
-
-            pickBestGravityDirection(clusters) {
-                const candidates = ['up', 'down', 'left', 'right']
-                    .filter((dir) => dir !== this.gravityDirection)
-                    .sort(() => Math.random() - 0.5);
-
-                if (candidates.length === 0) {
-                    return {
-                        direction: this.gravityDirection,
-                        ...this.getGravitySlidePlan(this.gravityDirection, clusters)
-                    };
-                }
-
-                let bestDirection = candidates[0];
-                let bestResult = this.getGravitySlidePlan(bestDirection, clusters);
-
-                for (let i = 1; i < candidates.length; i += 1) {
-                    const direction = candidates[i];
-                    const result = this.getGravitySlidePlan(direction, clusters);
-                    if (result.totalSlide > bestResult.totalSlide) {
-                        bestDirection = direction;
-                        bestResult = result;
-                    }
-                }
-
-                return { direction: bestDirection, ...bestResult };
-            }
-
-            applyGravityShift(triggeringPlayerIndex = null) {
-                if (this.isGravityAnimating) return false;
-
-                const clusters = this.findClusters();
-                const bestShift = this.pickBestGravityDirection(clusters);
-                this.gravityDirection = bestShift.direction;
-                this.movesUntilShiftCount = this.initialMovesUntilShift;
-                this.isGravityAnimating = true;
-
-                if (this.blitzEnabled && this.turnDeadlineTs) {
-                    this.turnDeadlineTs += 650;
-                }
-
-                const cellSize = 100 / this.size;
-                const newPoints = new Map();
-                const newBoxes = new Map();
-
-                bestShift.plan.forEach(({ cluster, slideDistance }) => {
-                    cluster.points.forEach((pointKey) => {
+                    // Move all points in the cluster
+                    cluster.points.forEach(pointKey => {
                         const playerIndex = this.points.get(pointKey);
-                        if (!Number.isInteger(playerIndex)) return;
-                        const [px, py] = pointKey.split(',').map(Number);
-                        const shifted = this.getShiftedCoordinates(px, py, this.gravityDirection, slideDistance);
-                        const newKey = `${shifted.x},${shifted.y}`;
-                        newPoints.set(newKey, playerIndex);
+                        let [x, y] = pointKey.split(',').map(Number);
+                        if (this.gravityDirection === 'down') y += slideDistance;
+                        else if (this.gravityDirection === 'up') y -= slideDistance;
+                        else if (this.gravityDirection === 'left') x -= slideDistance;
+                        else if (this.gravityDirection === 'right') x += slideDistance;
 
+                        const newKey = `${x},${y}`;
+                        newPoints.set(newKey, playerIndex);
+                        occupied.add(newKey);
+
+                        // Move Point DOM element
                         const pointEl = document.getElementById(`point-${pointKey.replace(',', '-')}`);
                         if (pointEl) {
                             pointEl.id = `point-${newKey.replace(',', '-')}`;
-                            pointEl.style.left = `${shifted.x * cellSize}%`;
-                            pointEl.style.top = `${shifted.y * cellSize}%`;
+                            pointEl.style.left = `${x * cellSize}%`;
+                            pointEl.style.top = `${y * cellSize}%`;
                         }
                     });
 
-                    cluster.boxes.forEach((boxKey) => {
+                    // Move all associated boxes
+                    cluster.boxes.forEach(boxKey => {
                         const ownerIndex = this.boxes.get(boxKey);
-                        if (!Number.isInteger(ownerIndex)) return;
-                        const [bx, by] = boxKey.split(',').map(Number);
-                        const shifted = this.getShiftedCoordinates(bx, by, this.gravityDirection, slideDistance);
-                        const newBoxKey = `${shifted.x},${shifted.y}`;
+                        let [x, y] = boxKey.split(',').map(Number);
+                        if (this.gravityDirection === 'down') y += slideDistance;
+                        else if (this.gravityDirection === 'up') y -= slideDistance;
+                        else if (this.gravityDirection === 'left') x -= slideDistance;
+                        else if (this.gravityDirection === 'right') x += slideDistance;
+
+                        const newBoxKey = `${x},${y}`;
                         newBoxes.set(newBoxKey, ownerIndex);
 
+                        // Move Box DOM element
                         const boxEl = document.getElementById(`box-${boxKey.replace(',', '-')}`);
                         if (boxEl) {
                             boxEl.id = `box-${newBoxKey.replace(',', '-')}`;
-                            boxEl.style.left = `${shifted.x * cellSize}%`;
-                            boxEl.style.top = `${shifted.y * cellSize}%`;
+                            boxEl.style.left = `${x * cellSize}%`;
+                            boxEl.style.top = `${y * cellSize}%`;
                         }
                     });
                 });
@@ -4278,90 +2336,32 @@
                 this.points = newPoints;
                 this.boxes = newBoxes;
 
-                const overlay = document.getElementById('gravityOverlay');
-                const overlayIcon = document.getElementById('gravityOverlayIcon');
-                if (overlay) {
-                    const rot = this.getGravityRotationDegrees();
-                    if (overlayIcon) overlayIcon.style.transform = `rotate(${rot}deg)`;
-                    overlay.style.display = 'flex';
-                    setTimeout(() => {
-                        if (window.game !== this) return;
-                        overlay.style.opacity = '1';
-                    }, 10);
-                    if (soundEnabled) playSound('shift_slide');
-                    setTimeout(() => {
-                        if (window.game !== this) return;
-                        overlay.style.opacity = '0';
-                        setTimeout(() => {
-                            if (window.game !== this) return;
-                            overlay.style.display = 'none';
-                        }, 400);
-                    }, 1200);
-                }
-
-                const grid = document.getElementById('grid');
-                if (grid) {
-                    grid.classList.add('gravity-shake');
-                    setTimeout(() => {
-                        if (window.game !== this) return;
-                        grid.classList.remove('gravity-shake');
-                    }, 600);
-                }
-
-                showToast(
-                    bestShift.totalSlide > 0
-                        ? `Gravity Shift : ${this.getGravityDirectionName()} !`
-                        : `Gravity Shift : ${this.getGravityDirectionName()} (stable)`,
-                    'info'
-                );
-
-                this.refreshGravityIndicator();
-                this.updateUI();
-
-                if (this.gravityFinalizeTimeoutId) {
-                    clearTimeout(this.gravityFinalizeTimeoutId);
-                }
-                this.gravityFinalizeTimeoutId = setTimeout(async () => {
-                    if (window.game !== this) return;
-                    try {
-                        let newBoxesCount = 0;
-                        for (let y = 0; y < this.size; y++) {
-                            for (let x = 0; x < this.size; x++) {
-                                if (!this.boxes.has(`${x},${y}`) && this.checkBox(x, y)) {
-                                    const ownerIndex = this.points.get(`${x},${y}`);
-                                    this.completeBox(
-                                        x,
-                                        y,
-                                        ownerIndex !== undefined
-                                            ? ownerIndex
-                                            : (triggeringPlayerIndex !== null ? triggeringPlayerIndex : this.currentPlayerIndex)
-                                    );
-                                    newBoxesCount++;
-                                }
+                // Recalculate if NEW boxes formed after movement
+                setTimeout(() => {
+                    let newBoxesCount = 0;
+                    for (let y = 0; y < this.size; y++) {
+                        for (let x = 0; x < this.size; x++) {
+                            if (!this.boxes.has(`${x},${y}`) && this.checkBox(x, y)) {
+                                const ownerIndex = this.points.get(`${x},${y}`);
+                                this.completeBox(x, y, ownerIndex !== undefined ? ownerIndex : (triggeringPlayerIndex !== null ? triggeringPlayerIndex : this.currentPlayerIndex));
+                                newBoxesCount++;
                             }
                         }
-
-                        if (newBoxesCount > 0 && soundEnabled) {
-                            if (newBoxesCount > 1) playSound('combo');
-                            else playSound('complete');
-                        }
-                        if (soundEnabled) playSound('shift_impact');
-                        this.checkGameEnd();
-
-                        if (this.withAI && this.currentPlayerIndex === 1 && !this.gameOver) {
-                            await this.handleAITurn();
-                        }
-                    } catch (error) {
-                        console.error('Erreur Gravity Shift:', error);
-                    } finally {
-                        this.isGravityAnimating = false;
-                        this.gravityFinalizeTimeoutId = null;
-                        this.refreshGravityIndicator();
-                        this.updateUI();
                     }
+                    if (newBoxesCount > 0 && soundEnabled) {
+                        if (newBoxesCount > 1) playSound('combo');
+                        else playSound('complete');
+                    }
+                    if (soundEnabled) playSound('shift_impact');
+                    this.refreshGravityIndicator();
+                    this.updateUI();
                 }, 600);
 
-                return true;
+                const grid = document.getElementById('grid');
+                grid.classList.add('gravity-shake');
+                setTimeout(() => grid.classList.remove('gravity-shake'), 600);
+
+                showToast(`Gravity Shift : ${this.getGravityDirectionName()} !`, 'info');
             }
 
             checkHyperNexus(bx, by, playerIndex) {
@@ -4428,7 +2428,6 @@
                                 // All 4 corners of this box belong to the cluster
                                 const corners = [`${bx},${by}`, `${bx + 1},${by}`, `${bx},${by + 1}`, `${bx + 1},${by + 1}`];
                                 corners.forEach(cornerKey => {
-                                    if (!this.points.has(cornerKey)) return;
                                     if (!visitedPoints.has(cornerKey)) {
                                         visitedPoints.add(cornerKey);
                                         queue.push(cornerKey);
@@ -4494,7 +2493,7 @@
 
                 const grid = document.getElementById('grid');
                 if (grid) {
-                    const isLocked = this.gameOver || this.isGravityAnimating || !this.isLocalTurn();
+                    const isLocked = this.gameOver || !this.isLocalTurn();
                     grid.style.pointerEvents = isLocked ? 'none' : 'auto';
                     grid.dataset.locked = isLocked ? 'true' : 'false';
                     if (currentPlayer) {
@@ -4509,7 +2508,6 @@
 
                 this.refreshGravityIndicator();
                 this.updateStatusPanels();
-                persistAppSessionState();
             }
 
             updateStatusPanels() {
@@ -4556,16 +2554,16 @@
                     if (bluetoothConnection && !networkMatchState.started) {
                         if (isMatchCountdownRunning()) {
                             return {
-                                text: `Demarrage dans ${getMatchCountdownRemainingSeconds()}s...`,
+                                text: `Demarrage automatique dans ${getMatchCountdownRemainingSeconds()}s...`,
                                 persistent: true
                             };
                         }
                         return {
                             text: isHost
                                 ? (networkMatchState.guestReady
-                                    ? 'Joueurs prets. Lancez la manche.'
-                                    : 'En attente des joueurs invites.')
-                                : 'En attente du lancement par l hote.',
+                                    ? 'Adversaire pret. Demarrage automatique...'
+                                    : 'En attente que l adversaire soit pret.')
+                                : 'En attente du demarrage automatique par l hote.',
                             persistent: true
                         };
                     }
@@ -4600,9 +2598,9 @@
                                 } else {
                                     gameHint.textContent = isHost
                                         ? (networkMatchState.guestReady
-                                            ? `Session ${sessionLabel} | ${latencyLabel} | Pret a lancer la manche.`
-                                            : `Session ${sessionLabel} | ${latencyLabel} | En attente des joueurs invites.`)
-                                        : `Session ${sessionLabel} | ${latencyLabel} | En attente du lancement de l hote.`;
+                                            ? `Session ${sessionLabel} | ${latencyLabel} | Demarrage automatique de la manche.`
+                                            : `Session ${sessionLabel} | ${latencyLabel} | En attente de l adversaire.`)
+                                        : `Session ${sessionLabel} | ${latencyLabel} | En attente du demarrage automatique.`;
                                 }
                             } else {
                                 gameHint.textContent = this.blitzEnabled
@@ -4632,8 +2630,8 @@
 
                 const totalPossiblePoints = this.getTotalPlayablePoints();
 
-                if (this.points.size >= totalPossiblePoints || !this.isAnyBoxPossible()) {
-                    this.finishGame(this.points.size >= totalPossiblePoints ? 'board' : 'blocked');
+                if (this.points.size === totalPossiblePoints || !this.isAnyBoxPossible()) {
+                    this.finishGame(this.points.size === totalPossiblePoints ? 'board' : 'blocked');
                 }
             }
 
@@ -4819,16 +2817,10 @@
 
                 const gameOverScreen = document.createElement('div');
                 gameOverScreen.className = 'game-over-screen fixed inset-0 z-[120] bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm overflow-y-auto no-scrollbar';
-                const isOnlineSession = Boolean(bluetoothConnection);
-                const closeAction = isOnlineSession ? 'handleGameOverMenuAction()' : 'restartGame()';
-                const replayAction = isOnlineSession ? 'handleGameOverReplayAction()' : 'restartGame()';
-                const secondaryAction = isOnlineSession ? 'handleGameOverMenuAction()' : 'restartGame()';
-                const replayLabel = isOnlineSession ? 'Rejouer dans le salon' : 'Rejouer';
-                const secondaryLabel = isOnlineSession ? 'Retour au salon' : 'Menu principal';
                 gameOverScreen.innerHTML = `
                     <div class="min-h-screen w-full max-w-[430px] mx-auto flex flex-col px-4 pt-6 pb-8">
                         <div class="flex items-center justify-between mb-4">
-                            <button onclick="${closeAction}" class="w-11 h-11 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200">
+                            <button onclick="restartGame()" class="w-11 h-11 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200">
                                 <span class="material-symbols-outlined">close</span>
                             </button>
                             <h2 class="text-lg font-bold uppercase tracking-widest text-slate-900 dark:text-slate-100">Resultats</h2>
@@ -4852,13 +2844,13 @@
                         </div>
 
                         <div class="mt-auto pt-6 space-y-3">
-                            <button onclick="${replayAction}" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/30">
+                            <button onclick="restartGame()" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/30">
                                 <span class="material-symbols-outlined">refresh</span>
-                                ${replayLabel}
+                                Rejouer
                             </button>
-                            <button onclick="${secondaryAction}" class="w-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95">
+                            <button onclick="restartGame()" class="w-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95">
                                 <span class="material-symbols-outlined">home</span>
-                                ${secondaryLabel}
+                                Menu principal
                             </button>
                         </div>
                     </div>
@@ -4914,14 +2906,8 @@
         const AUTO_RESYNC_REQUEST_COOLDOWN = 3200;
         const AUTO_RESYNC_TICK_INTERVAL = 1000;
         const SIGNALING_URL_STORAGE_KEY = 'points.webrtc.signalingUrl';
-        const RECENT_SESSION_CODES_STORAGE_KEY = 'points.webrtc.recentSessionCodes.v1';
-        const RECENT_SESSION_CODES_MAX_ITEMS = 8;
         const SETUP_PREFERENCES_STORAGE_KEY = 'points.setupPreferences.v1';
         const BLUETOOTH_STATUS_COLLAPSED_KEY = 'points.webrtc.statusCollapsed.v1';
-        const APP_SESSION_STATE_STORAGE_KEY = 'points.appSessionState.v1';
-        const APP_SESSION_STATE_VERSION = 1;
-        const APP_SESSION_STATE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-        const LOBBY_ACTIVITY_MAX = 40;
         const MATCH_START_COUNTDOWN_MS = 3000;
         const MATCH_START_GO_MS = 460;
         const TURN_HINT_AUTO_HIDE_MS = 3400;
@@ -4937,7 +2923,6 @@
         let lastBluetoothActivityAt = 0;
         let reconnectInProgress = false;
         let pendingPings = new Map();
-        let peerLatencyById = new Map();
         let pingSequence = 0;
         let autoResyncIntervalId = null;
         let autoResyncTickInFlight = false;
@@ -4953,23 +2938,11 @@
             hostConfig: null
         };
         let pendingDataChannelReady = null;
-        let localNetworkPeerId = null;
-        let localNetworkPlayerIndices = [];
-        let hostPeerPlayerSlots = new Map();
-        let hostPeerNames = new Map();
         let networkMatchState = {
             started: false,
             hostReady: false,
-            guestReady: false,
-            readyGuestCount: 0,
-            requiredGuestCount: 1
+            guestReady: false
         };
-        let rematchLocalReady = false;
-        let rematchReadyPeerIds = new Set();
-        let lobbyActivityEntries = [];
-        let copyFeedbackTimeouts = new Map();
-        let currentScreenId = 'screenMainMenu';
-        let sessionStateRestoreInProgress = false;
         let matchStartCountdown = {
             active: false,
             starting: false,
@@ -5016,159 +2989,15 @@
             }
         }
 
-        function getExpectedOnlinePlayersCount() {
-            const fromGame = normalizeOnlinePlayersCount(window.game?.players?.length || 0);
-            if (fromGame >= 2) return fromGame;
-            const fromHostConfig = normalizeOnlinePlayersCount(bluetoothSession.hostConfig?.onlinePlayersCount || 0);
-            if (fromHostConfig >= 2) return fromHostConfig;
-            const inputValue = document.getElementById('onlinePlayersCount')?.value ?? 2;
-            return normalizeOnlinePlayersCount(inputValue);
-        }
-
-        function getRequiredGuestCount() {
-            return Math.max(1, getExpectedOnlinePlayersCount() - 1);
-        }
-
-        function getReadyPeerIds() {
-            const readyIds = [];
-            for (const [peerId, peer] of bluetoothPeers.entries()) {
-                if (!peer?.ready) continue;
-                if (!peer.dataChannel || peer.dataChannel.readyState !== 'open') continue;
-                readyIds.push(peerId);
-            }
-            return readyIds;
-        }
-
-        function isOnlineRematchLobby() {
-            return Boolean(bluetoothConnection && window.game?.gameOver && !networkMatchState.started);
-        }
-
-        function pruneRematchReadyPeers() {
-            if (!isHost || rematchReadyPeerIds.size === 0) return;
-            const connectedIds = new Set(getReadyPeerIds());
-            for (const peerId of Array.from(rematchReadyPeerIds)) {
-                if (!connectedIds.has(peerId)) {
-                    rematchReadyPeerIds.delete(peerId);
-                }
-            }
-        }
-
-        function hasOpenDataChannel() {
-            if (!bluetoothConnection) return false;
-            if (isHost) {
-                return getReadyPeerIds().length > 0;
-            }
-            return bluetoothConnection.dataChannel?.readyState === 'open';
-        }
-
-        function setLocalNetworkPlayerIndices(indices = []) {
-            if (isHost) {
-                localNetworkPlayerIndices = [0];
-                return;
-            }
-            const expectedCount = getExpectedOnlinePlayersCount();
-            const normalized = Array.from(new Set(
-                (Array.isArray(indices) ? indices : [])
-                    .map((value) => Number.parseInt(value, 10))
-                    .filter((value) => Number.isFinite(value) && value >= 0 && value < expectedCount)
-            )).sort((a, b) => a - b);
-            localNetworkPlayerIndices = normalized;
-        }
-
-        function recomputeHostGuestReadyState() {
-            if (!isHost) return;
-            const required = getRequiredGuestCount();
-            networkMatchState.requiredGuestCount = required;
-            if (isOnlineRematchLobby()) {
-                pruneRematchReadyPeers();
-                const readyCount = rematchReadyPeerIds.size;
-                networkMatchState.readyGuestCount = readyCount;
-                networkMatchState.guestReady = readyCount >= required;
-                return;
-            }
-
-            const readyCount = getReadyPeerIds().length;
-            networkMatchState.readyGuestCount = readyCount;
-            networkMatchState.guestReady = readyCount >= required;
-        }
-
-        function applyHostGuestNamesToPlayers() {
-            if (!isHost || !window.game || !Array.isArray(window.game.players)) return;
-            let changed = false;
-            for (const [peerId, playerIndex] of hostPeerPlayerSlots.entries()) {
-                if (!Number.isInteger(playerIndex) || playerIndex < 1) continue;
-                const guestName = hostPeerNames.get(peerId);
-                if (!guestName || !window.game.players[playerIndex]) continue;
-                const safeName = normalizePlayerName(guestName, `Joueur ${playerIndex + 1}`);
-                if (window.game.players[playerIndex].name !== safeName) {
-                    window.game.players[playerIndex].name = safeName;
-                    changed = true;
-                }
-            }
-
-            if (changed) {
-                if (typeof window.game.initScoreBoard === 'function') {
-                    window.game.initScoreBoard();
-                }
-                if (typeof window.game.updateUI === 'function') {
-                    window.game.updateUI();
-                }
-            }
-        }
-
-        function refreshHostPeerAssignments() {
-            if (!isHost) return;
-            const readyPeerIds = getReadyPeerIds();
-            const requiredGuests = getRequiredGuestCount();
-            const previousAssignments = new Map(hostPeerPlayerSlots);
-            const nextAssignments = new Map();
-            const availableSlots = [];
-            for (let slot = 1; slot <= requiredGuests; slot += 1) {
-                availableSlots.push(slot);
-            }
-
-            for (const peerId of readyPeerIds) {
-                const previousSlot = previousAssignments.get(peerId);
-                if (Number.isInteger(previousSlot) && previousSlot >= 1 && previousSlot <= requiredGuests) {
-                    const slotIndex = availableSlots.indexOf(previousSlot);
-                    if (slotIndex >= 0) {
-                        availableSlots.splice(slotIndex, 1);
-                        nextAssignments.set(peerId, previousSlot);
-                    }
-                }
-            }
-
-            for (const peerId of readyPeerIds) {
-                if (nextAssignments.has(peerId)) continue;
-                const assignedPlayerIndex = availableSlots.length > 0 ? availableSlots.shift() : null;
-                nextAssignments.set(peerId, assignedPlayerIndex);
-            }
-
-            hostPeerPlayerSlots = nextAssignments;
-
-            applyHostGuestNamesToPlayers();
-            recomputeHostGuestReadyState();
-        }
-
         function getLocalPlayerIndices(playersCount = 2) {
             const totalPlayers = normalizeOnlinePlayersCount(playersCount);
-            if (!bluetoothConnection) {
-                return Array.from({ length: totalPlayers }, (_, index) => index);
-            }
-
-            const assigned = Array.from(new Set(
-                (Array.isArray(localNetworkPlayerIndices) ? localNetworkPlayerIndices : [])
-                    .filter((index) => Number.isInteger(index) && index >= 0 && index < totalPlayers)
-            ));
-            if (assigned.length > 0) {
-                return assigned;
-            }
-
-            if (isHost) return [0];
             if (totalPlayers <= 2) {
-                return totalPlayers > 1 ? [1] : [0];
+                return isHost ? [0] : [1];
             }
-            return [];
+            if (totalPlayers === 3) {
+                return isHost ? [0, 2] : [1];
+            }
+            return isHost ? [0, 2] : [1, 3];
         }
 
         function getRemotePlayerIndices(playersCount = 2) {
@@ -5298,374 +3127,6 @@
             stateEl.textContent = isReady ? 'Pret' : 'Attente';
         }
 
-        function renderLobbyReadyProgress(readyPlayers, totalPlayers) {
-            const summary = document.getElementById('lobbyReadySummary');
-            const fill = document.getElementById('lobbyReadyProgressFill');
-            const safeTotal = Math.max(1, Number.parseInt(totalPlayers, 10) || 1);
-            const safeReady = Math.max(0, Math.min(safeTotal, Number.parseInt(readyPlayers, 10) || 0));
-            const percent = Math.round((safeReady / safeTotal) * 100);
-
-            if (summary) {
-                summary.textContent = `${safeReady}/${safeTotal} prets`;
-            }
-            if (fill) {
-                fill.style.width = `${percent}%`;
-            }
-        }
-
-        function renderLobbyPlayersGrid({
-            totalPlayers = 2,
-            requiredGuests = 1,
-            isConnected = false,
-            isLobbyMatchRunning = false,
-            isRematchLobby = false
-        } = {}) {
-            const grid = document.getElementById('lobbyPlayersGrid');
-            if (!grid) return;
-
-            const safeTotal = Math.max(2, Number.parseInt(totalPlayers, 10) || 2);
-            grid.className = `w-full grid ${safeTotal > 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-2`;
-
-            const players = Array.isArray(window.game?.players) ? window.game.players : [];
-            const localSlots = new Set(getLocalPlayerIndices(safeTotal));
-            const slotToPeerId = new Map();
-            for (const [peerId, slot] of hostPeerPlayerSlots.entries()) {
-                if (Number.isInteger(slot) && slot >= 1) {
-                    slotToPeerId.set(slot, peerId);
-                }
-            }
-
-            const cards = [];
-            for (let idx = 0; idx < safeTotal; idx += 1) {
-                const fallbackName = idx === 0 ? 'Hote' : `Joueur ${idx + 1}`;
-                const player = players[idx];
-                const name = normalizePlayerName(player?.name || fallbackName, fallbackName);
-                const color = String(player?.color || getPlayerColor(`player${Math.min(idx + 1, 4)}Color`, '#328DCB'));
-                const isHostSlot = idx === 0;
-                const isLocalSlot = localSlots.has(idx);
-                const peerIdForSlot = isHost ? (isHostSlot ? 'host' : slotToPeerId.get(idx)) : (isHostSlot ? 'host' : null);
-
-                let connected = isConnected;
-                let ready = false;
-                let stateLabel = 'Hors ligne';
-                let pingLabel = '--';
-                let pingQuality = 'unknown';
-
-                if (isHostSlot) {
-                    connected = isConnected;
-                    ready = isLobbyMatchRunning || Boolean(networkMatchState.hostReady);
-                } else if (isHost) {
-                    const peerId = peerIdForSlot;
-                    connected = Boolean(isConnected && peerId);
-                    if (isLobbyMatchRunning) {
-                        ready = connected;
-                    } else if (isRematchLobby) {
-                        ready = Boolean(connected && peerId && rematchReadyPeerIds.has(peerId));
-                    } else {
-                        ready = connected;
-                    }
-                } else {
-                    connected = isLocalSlot ? true : isConnected;
-                    if (isLobbyMatchRunning) {
-                        ready = connected;
-                    } else if (isRematchLobby) {
-                        ready = isLocalSlot
-                            ? rematchLocalReady
-                            : (networkMatchState.guestReady && connected);
-                    } else if (isLocalSlot) {
-                        ready = true;
-                    } else {
-                        const guestReadyCount = Math.max(
-                            0,
-                            Math.min(requiredGuests, Number.parseInt(networkMatchState.readyGuestCount, 10) || 0)
-                        );
-                        ready = guestReadyCount >= idx;
-                    }
-                }
-
-                if (isLocalSlot) {
-                    pingLabel = 'Local';
-                } else if (isHost) {
-                    const peerId = peerIdForSlot;
-                    const entry = peerId ? peerLatencyById.get(peerId) : null;
-                    if (Number.isFinite(Number(entry?.latencyMs))) {
-                        pingLabel = `${Math.max(0, Math.round(Number(entry.latencyMs)))} ms`;
-                        pingQuality = String(entry?.quality || 'unknown');
-                    } else if (connected) {
-                        pingLabel = '...';
-                    }
-                } else if (isHostSlot) {
-                    if (Number.isFinite(connectionStatus.latencyMs)) {
-                        pingLabel = `${Math.max(0, Math.round(connectionStatus.latencyMs))} ms`;
-                        pingQuality = String(connectionStatus.latencyQuality || 'unknown');
-                    } else if (connected) {
-                        pingLabel = '...';
-                    }
-                }
-
-                if (!connected) {
-                    stateLabel = 'Hors ligne';
-                } else if (isLobbyMatchRunning) {
-                    stateLabel = 'En manche';
-                } else if (ready) {
-                    stateLabel = 'Pret';
-                } else {
-                    stateLabel = 'Attente';
-                }
-
-                const stateClasses = !connected
-                    ? 'bg-slate-500/15 text-slate-500 border-slate-500/30'
-                    : ready
-                        ? 'bg-emerald-500/15 text-emerald-400 border-emerald-400/35'
-                        : 'bg-amber-500/15 text-amber-300 border-amber-400/30';
-                const pingClasses = !connected || pingLabel === '--'
-                    ? 'text-slate-500'
-                    : pingLabel === 'Local'
-                        ? 'text-slate-400'
-                        : pingQuality === 'good'
-                            ? 'text-emerald-400'
-                            : pingQuality === 'fair'
-                                ? 'text-amber-300'
-                                : pingQuality === 'poor'
-                                    ? 'text-rose-400'
-                                    : 'text-slate-300';
-
-                cards.push(`
-                    <div class="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/50 px-3 py-2.5">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${color}"></span>
-                                <span class="text-[12px] font-bold text-slate-900 dark:text-slate-100 truncate">${name}</span>
-                            </div>
-                            <span class="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">${isHostSlot ? 'Hote' : `J${idx + 1}`}</span>
-                        </div>
-                        <div class="mt-2 flex items-center justify-between gap-2">
-                            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">${isLocalSlot ? 'Vous' : 'Slot'}</span>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider ${stateClasses}">${stateLabel}</span>
-                        </div>
-                        <div class="mt-1 flex items-center justify-between gap-2">
-                            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ping</span>
-                            <span class="text-[10px] font-black tracking-wide ${pingClasses}">${pingLabel}</span>
-                        </div>
-                    </div>
-                `);
-            }
-
-            grid.innerHTML = cards.join('');
-        }
-
-        function formatLobbyActivityTime(ts) {
-            try {
-                return new Date(ts).toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            } catch (_error) {
-                return '--:--';
-            }
-        }
-
-        function escapeLobbyActivityText(value) {
-            return String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
-        function renderLobbyActivityFeed() {
-            const feed = document.getElementById('lobbyActivityFeed');
-            if (!feed) return;
-
-            if (!Array.isArray(lobbyActivityEntries) || lobbyActivityEntries.length === 0) {
-                feed.innerHTML = '<p class="text-[11px] text-slate-500 dark:text-slate-400">Aucune activite pour le moment.</p>';
-                return;
-            }
-
-            const rows = lobbyActivityEntries.map((entry) => {
-                const tone = String(entry?.tone || 'info');
-                const textClasses = tone === 'local'
-                    ? 'text-emerald-500 dark:text-emerald-400'
-                    : tone === 'warning'
-                        ? 'text-amber-500 dark:text-amber-300'
-                        : 'text-slate-700 dark:text-slate-200';
-                return `
-                    <div class="flex items-start justify-between gap-2">
-                        <p class="text-[11px] leading-relaxed ${textClasses}">${escapeLobbyActivityText(entry.message)}</p>
-                        <span class="text-[9px] font-bold text-slate-400 shrink-0">${formatLobbyActivityTime(entry.ts)}</span>
-                    </div>
-                `;
-            }).join('');
-
-            feed.innerHTML = rows;
-        }
-
-        function addLobbyActivity(message, tone = 'info') {
-            const normalizedMessage = String(message || '').trim();
-            if (!normalizedMessage) return;
-
-            lobbyActivityEntries.unshift({
-                message: normalizedMessage.slice(0, 220),
-                tone: String(tone || 'info'),
-                ts: Date.now()
-            });
-            if (lobbyActivityEntries.length > LOBBY_ACTIVITY_MAX) {
-                lobbyActivityEntries = lobbyActivityEntries.slice(0, LOBBY_ACTIVITY_MAX);
-            }
-            renderLobbyActivityFeed();
-        }
-
-        function clearLobbyActivityFeed() {
-            lobbyActivityEntries = [];
-            renderLobbyActivityFeed();
-        }
-
-        function getLobbyQuickMessagePreset(preset) {
-            const key = String(preset || '').toLowerCase();
-            if (key === 'ready') return 'Je suis pret.';
-            if (key === 'wait') return 'Patientez, je configure encore.';
-            return '';
-        }
-
-        async function sendLobbyQuickMessage(presetOrText) {
-            if (!bluetoothConnection || !connectionStatus.connected) {
-                showToast('Connexion salon indisponible.', 'info');
-                return;
-            }
-            if (networkMatchState.started) {
-                showToast('Messages rapides disponibles avant le lancement.', 'info');
-                return;
-            }
-
-            const presetMessage = getLobbyQuickMessagePreset(presetOrText);
-            const message = String(presetMessage || presetOrText || '').trim().slice(0, 120);
-            if (!message) return;
-
-            const senderName = normalizePlayerName(
-                getPlayerName('player1Name', isHost ? 'Hote' : 'Joueur'),
-                isHost ? 'Hote' : 'Joueur'
-            );
-            addLobbyActivity(`${senderName}: ${message}`, 'local');
-
-            const sent = await sendBluetoothData({
-                type: 'lobbyQuickMessage',
-                senderName,
-                text: message
-            });
-            if (!sent) {
-                showToast('Message non envoye.', 'error');
-            }
-        }
-
-        async function copyHostSessionCodeFromSalon() {
-            const code = sanitizeSessionCode(bluetoothSession.code || connectionStatus.sessionCode || '');
-            if (!code) {
-                showToast('Code de session indisponible.', 'info');
-                return;
-            }
-            await copyTextToClipboard(code, `Code ${code} copie.`, {
-                buttonId: 'btnSalonCopyCode',
-                buttonSuccessLabel: 'Code copie'
-            });
-        }
-
-        async function copySessionInviteLinkFromSalon() {
-            const inviteLink = buildSessionInviteLink();
-            if (!inviteLink) {
-                showToast('Lien indisponible: code de session manquant.', 'info');
-                return;
-            }
-            await copyTextToClipboard(inviteLink, 'Lien d invitation copie.', {
-                buttonId: 'btnSalonCopyLink',
-                buttonSuccessLabel: 'Lien copie'
-            });
-        }
-
-        function refreshSalonQuickActions() {
-            const canUseSalonActions = Boolean(
-                bluetoothConnection &&
-                connectionStatus.connected &&
-                !networkMatchState.started
-            );
-            const code = sanitizeSessionCode(
-                connectionStatus.sessionCode || bluetoothConnection?.sessionCode || bluetoothSession.code || ''
-            );
-            const inviteLink = code ? buildSessionInviteLink() : '';
-            const copyCodeBtn = document.getElementById('btnSalonCopyCode');
-            const copyLinkBtn = document.getElementById('btnSalonCopyLink');
-            const quickButtons = document.querySelectorAll('button[onclick^="sendLobbyQuickMessage"]');
-
-            if (copyCodeBtn) {
-                copyCodeBtn.disabled = !code;
-            }
-            if (copyLinkBtn) {
-                copyLinkBtn.disabled = !inviteLink;
-            }
-            quickButtons.forEach((button) => {
-                button.disabled = !canUseSalonActions;
-            });
-        }
-
-        async function handleLobbyPrimaryAction() {
-            const isBusy = connectionStatus.connecting || connectionStatus.reconnecting;
-            if (isBusy) return;
-
-            if (!bluetoothConnection) {
-                const hostAreaVisible = document.getElementById('webrtcHostArea')?.style.display === 'flex';
-                const joinAreaVisible = document.getElementById('webrtcJoinArea')?.style.display === 'flex';
-                if (hostAreaVisible) {
-                    await hostGame();
-                    return;
-                }
-                if (joinAreaVisible) {
-                    await joinGame();
-                    return;
-                }
-                showToast('Choisissez Heberger ou Rejoindre.', 'info');
-                return;
-            }
-
-            if (!connectionStatus.connected) {
-                manualReconnect();
-                return;
-            }
-
-            if (window.game?.gameOver) {
-                await requestOnlineRematch();
-                return;
-            }
-
-            if (!networkMatchState.started) {
-                if (isHost) {
-                    if (!networkMatchState.hostReady && isOnlineRematchLobby()) {
-                        await requestOnlineRematch();
-                        return;
-                    }
-                    if (!networkMatchState.guestReady) {
-                        const requiredGuests = getRequiredGuestCount();
-                        const readyGuests = Math.min(
-                            requiredGuests,
-                            Math.max(0, Number.parseInt(networkMatchState.readyGuestCount, 10) || 0)
-                        );
-                        showToast(`En attente joueurs (${readyGuests}/${requiredGuests}).`, 'info');
-                        return;
-                    }
-                    await startNetworkMatchCountdown({ broadcast: true });
-                    return;
-                }
-
-                if (isOnlineRematchLobby() && !rematchLocalReady) {
-                    await requestOnlineRematch();
-                    return;
-                }
-                showToast('En attente du lancement par l hote.', 'info');
-                return;
-            }
-
-            showGameView();
-        }
-
         function renderLobbyStatus() {
             const panel = document.getElementById('lobbyStatusPanel');
             if (!panel) return;
@@ -5694,26 +3155,12 @@
                 ''
             );
             if (sessionLabel) {
-                sessionLabel.classList.remove('hidden');
-                sessionLabel.className = 'w-full text-center text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400';
-                sessionLabel.textContent = `${sessionCode || '--'} | ${formatLatencyForDisplay(connectionStatus.latencyMs)}`;
+                sessionLabel.textContent = `Session ${sessionCode || '--'}`;
             }
 
             const isConnected = Boolean(connectionStatus.connected);
             const isConnecting = Boolean(connectionStatus.connecting || connectionStatus.reconnecting);
             const offlineLabel = isConnecting ? 'Connexion' : 'Hors ligne';
-            const requiredGuests = isHost
-                ? getRequiredGuestCount()
-                : Math.max(1, Number.parseInt(networkMatchState.requiredGuestCount, 10) || getRequiredGuestCount());
-            const readyGuests = isHost
-                ? (isOnlineRematchLobby()
-                    ? Math.max(0, Number.parseInt(networkMatchState.readyGuestCount, 10) || 0)
-                    : getReadyPeerIds().length)
-                : Math.max(
-                    0,
-                    Number.parseInt(networkMatchState.readyGuestCount, 10) ||
-                    (networkMatchState.guestReady ? requiredGuests : 0)
-                );
 
             let roundLabel = 'En attente';
             if (connectionStatus.reconnecting) {
@@ -5727,48 +3174,25 @@
             } else if (networkMatchState.started) {
                 roundLabel = 'Manche en cours';
             } else if (isHost) {
-                if (networkMatchState.hostReady && networkMatchState.guestReady) {
-                    roundLabel = 'Pret - lancez la manche';
-                } else if (isOnlineRematchLobby() && !networkMatchState.hostReady) {
-                    roundLabel = 'Validez la revanche';
-                } else {
-                    roundLabel = `En attente joueurs (${Math.min(readyGuests, requiredGuests)}/${requiredGuests})`;
-                }
+                roundLabel = networkMatchState.guestReady ? 'Demarrage imminent' : 'En attente adversaire';
             } else {
-                roundLabel = networkMatchState.hostReady
-                    ? 'En attente du lancement'
-                    : (isOnlineRematchLobby() ? 'En attente validation hote' : 'Sync hote');
+                roundLabel = networkMatchState.hostReady ? 'En attente demarrage auto' : 'Sync hote';
             }
 
             if (roundState) {
                 roundState.textContent = roundLabel;
             }
 
-            const totalPlayers = Math.max(2, requiredGuests + 1);
-            const readyPlayers = networkMatchState.started
-                ? totalPlayers
-                : Math.min(totalPlayers, (networkMatchState.hostReady ? 1 : 0) + Math.min(readyGuests, requiredGuests));
-            renderLobbyReadyProgress(readyPlayers, totalPlayers);
-            renderLobbyPlayersGrid({
-                totalPlayers,
-                requiredGuests,
-                isConnected,
-                isLobbyMatchRunning: Boolean(networkMatchState.started),
-                isRematchLobby: isOnlineRematchLobby()
-            });
-
             const hostDisplayName = normalizePlayerName(
                 window.game?.players?.[0]?.name || (isHost ? getPlayerName('player1Name', 'Hote') : 'Hote'),
                 'Hote'
             );
-            const guestDisplayName = isHost && getExpectedOnlinePlayersCount() > 2
-                ? `Invites ${Math.min(readyGuests, requiredGuests)}/${requiredGuests}`
-                : normalizePlayerName(
-                    window.game?.players?.[1]?.name || (!isHost ? getPlayerName('player1Name', 'Joueur') : 'Adversaire'),
-                    'Adversaire'
-                );
+            const guestDisplayName = normalizePlayerName(
+                window.game?.players?.[1]?.name || (!isHost ? getPlayerName('player1Name', 'Joueur') : 'Adversaire'),
+                'Adversaire'
+            );
 
-            const hostReady = Boolean(networkMatchState.hostReady);
+            const hostReady = Boolean(networkMatchState.hostReady || isHost);
             const guestReady = Boolean(networkMatchState.guestReady);
 
             setLobbyChipState({
@@ -5790,15 +3214,6 @@
                 isConnected,
                 offlineLabel
             });
-
-            const hostWaitingIndicator = document.getElementById('hostWaitingIndicator');
-            if (hostWaitingIndicator) {
-                const showWaiting = Boolean(isHost && isConnected && !networkMatchState.started && !networkMatchState.guestReady);
-                hostWaitingIndicator.style.display = showWaiting ? 'flex' : 'none';
-            }
-
-            refreshSalonQuickActions();
-            renderLobbyActivityFeed();
         }
 
         function clearMatchCountdownTimers() {
@@ -5865,24 +3280,12 @@
             networkMatchState.started = true;
             networkMatchState.hostReady = true;
             networkMatchState.guestReady = true;
-            networkMatchState.requiredGuestCount = getRequiredGuestCount();
-            networkMatchState.readyGuestCount = networkMatchState.requiredGuestCount;
-            rematchLocalReady = false;
-            if (isHost) {
-                rematchReadyPeerIds.clear();
-            }
             updateWebRTCActionButtons();
             updateLobbyHint();
-            addLobbyActivity('Manche demarree depuis le salon.', 'info');
 
-            if (window.game) {
-                showGameView();
-                if (window.game.gameOver) {
-                    window.game.initializeGame();
-                } else {
-                    window.game.startTurnTimer(true);
-                    window.game.updateUI();
-                }
+            if (window.game && !window.game.gameOver) {
+                window.game.startTurnTimer(true);
+                window.game.updateUI();
             }
 
             if (!isHostFinalization || !connectionStatus.connected) {
@@ -5899,9 +3302,6 @@
         function startLocalMatchCountdown(durationMs, isHostFinalization) {
             abortMatchStartCountdown();
             if (networkMatchState.started) return;
-            if (window.game) {
-                showGameView();
-            }
 
             matchStartCountdown.active = true;
             matchStartCountdown.endAtTs = Date.now() + durationMs;
@@ -5942,14 +3342,10 @@
         async function startNetworkMatchCountdown({ durationMs = MATCH_START_COUNTDOWN_MS, broadcast = false } = {}) {
             if (!bluetoothConnection || !connectionStatus.connected) return false;
             if (networkMatchState.started || matchStartCountdown.active || matchStartCountdown.starting) return false;
-            if (isHost) {
-                refreshHostPeerAssignments();
-            }
             if (isHost && !networkMatchState.guestReady) return false;
 
             const safeDuration = Math.max(1000, Number.parseInt(durationMs, 10) || MATCH_START_COUNTDOWN_MS);
             matchStartCountdown.starting = true;
-            addLobbyActivity(`Lancement de la manche dans ${Math.ceil(safeDuration / 1000)}s.`, 'info');
 
             if (broadcast && isHost) {
                 const sent = await sendBluetoothData({
@@ -5966,6 +3362,13 @@
             startLocalMatchCountdown(safeDuration, Boolean(broadcast && isHost));
             matchStartCountdown.starting = false;
             return true;
+        }
+
+        async function maybeAutoStartMatchCountdown() {
+            if (!isHost || !bluetoothConnection || !connectionStatus.connected) return false;
+            if (!networkMatchState.guestReady || networkMatchState.started) return false;
+            if (matchStartCountdown.active || matchStartCountdown.starting) return false;
+            return startNetworkMatchCountdown({ broadcast: true });
         }
 
         function loadBluetoothStatusCollapsedPreference() {
@@ -6058,227 +3461,10 @@
             preview.textContent = message;
         }
 
-        function readRecentSessionCodes() {
-            if (!window.localStorage) return [];
-            try {
-                const raw = localStorage.getItem(RECENT_SESSION_CODES_STORAGE_KEY);
-                if (!raw) return [];
-                const parsed = JSON.parse(raw);
-                if (!Array.isArray(parsed)) return [];
-                const deduped = [];
-                for (const entry of parsed) {
-                    const code = sanitizeSessionCode(entry);
-                    if (!code || deduped.includes(code)) continue;
-                    deduped.push(code);
-                    if (deduped.length >= RECENT_SESSION_CODES_MAX_ITEMS) {
-                        break;
-                    }
-                }
-                return deduped;
-            } catch (_error) {
-                return [];
-            }
-        }
-
-        function writeRecentSessionCodes(codes = []) {
-            if (!window.localStorage) return;
-            try {
-                const normalized = [];
-                for (const entry of codes) {
-                    const code = sanitizeSessionCode(entry);
-                    if (!code || normalized.includes(code)) continue;
-                    normalized.push(code);
-                    if (normalized.length >= RECENT_SESSION_CODES_MAX_ITEMS) {
-                        break;
-                    }
-                }
-                localStorage.setItem(RECENT_SESSION_CODES_STORAGE_KEY, JSON.stringify(normalized));
-            } catch (_error) {
-                // Ignore storage errors.
-            }
-        }
-
-        function rememberRecentSessionCode(code) {
-            const normalizedCode = sanitizeSessionCode(code);
-            if (!normalizedCode) return;
-            const current = readRecentSessionCodes().filter((entry) => entry !== normalizedCode);
-            current.unshift(normalizedCode);
-            writeRecentSessionCodes(current);
-        }
-
-        function clearRecentSessionCodes() {
-            if (!window.localStorage) return;
-            try {
-                localStorage.removeItem(RECENT_SESSION_CODES_STORAGE_KEY);
-            } catch (_error) {
-                // Ignore storage errors.
-            }
-            renderRecentSessionCodes();
-            showToast('Historique des codes vide.', 'info', 1800);
-        }
-
-        function applyRecentSessionCode(code) {
-            const normalizedCode = sanitizeSessionCode(code);
-            if (!normalizedCode) {
-                showToast('Code recent invalide.', 'info');
-                return;
-            }
-
-            bluetoothSession.code = normalizedCode;
-            bluetoothSession.expectedCode = normalizedCode;
-            bluetoothSession.verified = true;
-
-            isHost = true;
-            selectWebRTCRole('host');
-            initNetworkSetupUI('host');
-
-            const input = document.getElementById('sessionCodeInput');
-            if (input) {
-                input.value = normalizedCode;
-            }
-
-            setHostSessionCodeDisplay(normalizedCode, { trackRecent: true });
-            setSessionCodePreview(`Code de session hote: ${normalizedCode}`);
-            updateConnectionStatus({
-                sessionCode: normalizedCode,
-                sessionVerified: true
-            });
-            showToast(`Code ${normalizedCode} charge.`, 'success', 1800);
-        }
-
-        function buildInviteQrCodeUrl(inviteLink) {
-            const normalizedLink = String(inviteLink || '').trim();
-            if (!normalizedLink) return '';
-            const params = new URLSearchParams({
-                size: '220x220',
-                margin: '0',
-                data: normalizedLink
-            });
-            return `https://api.qrserver.com/v1/create-qr-code/?${params.toString()}`;
-        }
-
-        function renderRecentSessionCodes() {
-            const container = document.getElementById('recentSessionCodesList');
-            if (!container) return;
-
-            const recentCodes = readRecentSessionCodes();
-            if (recentCodes.length === 0) {
-                container.innerHTML = '<span class="text-[10px] text-slate-500 dark:text-slate-400">Aucun code recent.</span>';
-                return;
-            }
-
-            const currentCode = sanitizeSessionCode(
-                bluetoothSession.code || document.getElementById('hostSessionCodeDisplay')?.textContent || ''
-            );
-            const chips = recentCodes.map((code) => {
-                const isActive = code === currentCode;
-                const chipClasses = isActive
-                    ? 'bg-primary/15 border-primary/50 text-primary'
-                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200';
-                return `
-                    <button type="button" onclick="applyRecentSessionCode('${code}')" class="px-2.5 py-1 rounded-lg border text-[10px] font-black tracking-wide transition-all active:scale-95 ${chipClasses}">
-                        ${code}
-                    </button>
-                `;
-            }).join('');
-
-            container.innerHTML = `
-                ${chips}
-                <button type="button" onclick="clearRecentSessionCodes()" class="px-2.5 py-1 rounded-lg border border-rose-300/50 text-rose-400 text-[10px] font-black tracking-wide transition-all active:scale-95">
-                    Effacer
-                </button>
-            `;
-        }
-
-        function refreshHostInviteTools() {
-            const code = sanitizeSessionCode(
-                bluetoothSession.code || document.getElementById('hostSessionCodeDisplay')?.textContent || ''
-            );
-            const inviteLink = code ? buildSessionInviteLink() : '';
-            const linkPreview = document.getElementById('inviteLinkPreview');
-            const qrImage = document.getElementById('inviteQrImage');
-            const qrPlaceholder = document.getElementById('inviteQrPlaceholder');
-            const copyCodeButton = document.getElementById('btnCopyHostCode');
-            const copyLinkButton = document.getElementById('btnCopyInviteLink');
-
-            if (copyCodeButton) {
-                copyCodeButton.disabled = !code;
-            }
-            if (copyLinkButton) {
-                copyLinkButton.disabled = !inviteLink;
-            }
-            if (linkPreview) {
-                linkPreview.textContent = inviteLink || 'Lien indisponible.';
-            }
-
-            if (qrImage && qrPlaceholder) {
-                qrImage.onerror = () => {
-                    qrImage.classList.add('hidden');
-                    qrPlaceholder.classList.remove('hidden');
-                };
-                qrImage.onload = () => {
-                    if (!qrImage.getAttribute('src')) return;
-                    qrImage.classList.remove('hidden');
-                    qrPlaceholder.classList.add('hidden');
-                };
-                if (inviteLink) {
-                    qrImage.src = buildInviteQrCodeUrl(inviteLink);
-                    qrImage.classList.remove('hidden');
-                    qrPlaceholder.classList.add('hidden');
-                } else {
-                    qrImage.removeAttribute('src');
-                    qrImage.classList.add('hidden');
-                    qrPlaceholder.classList.remove('hidden');
-                }
-            }
-
-            renderRecentSessionCodes();
-        }
-
-        function setCopyButtonFeedback(buttonId, successLabel = 'Copie') {
-            const button = document.getElementById(buttonId);
-            if (!button) return;
-
-            const defaultLabel = String(button.dataset.defaultLabel || button.textContent || 'Copier').trim();
-            button.dataset.defaultLabel = defaultLabel;
-            button.textContent = successLabel;
-            button.classList.add('ring-2', 'ring-emerald-400/70');
-            button.style.backgroundColor = 'rgba(16, 185, 129, 0.18)';
-            button.style.color = '#10b981';
-
-            if (copyFeedbackTimeouts.has(buttonId)) {
-                clearTimeout(copyFeedbackTimeouts.get(buttonId));
-            }
-
-            const timeoutId = setTimeout(() => {
-                const targetButton = document.getElementById(buttonId);
-                if (!targetButton) return;
-                targetButton.textContent = targetButton.dataset.defaultLabel || defaultLabel;
-                targetButton.classList.remove('ring-2', 'ring-emerald-400/70');
-                targetButton.style.removeProperty('background-color');
-                targetButton.style.removeProperty('color');
-                copyFeedbackTimeouts.delete(buttonId);
-            }, 1500);
-            copyFeedbackTimeouts.set(buttonId, timeoutId);
-        }
-
-        function setHostSessionCodeDisplay(code, options = null) {
+        function setHostSessionCodeDisplay(code) {
             const codeDisplay = document.getElementById('hostSessionCodeDisplay');
             if (!codeDisplay) return;
-            const normalizedCode = sanitizeSessionCode(code);
-            codeDisplay.textContent = normalizedCode || '......';
-
-            if (normalizedCode && isHost) {
-                bluetoothSession.code = normalizedCode;
-                if (!bluetoothSession.expectedCode) {
-                    bluetoothSession.expectedCode = normalizedCode;
-                }
-            }
-
-            if (options?.trackRecent && normalizedCode) {
-                rememberRecentSessionCode(normalizedCode);
-            }
-            refreshHostInviteTools();
+            codeDisplay.textContent = sanitizeSessionCode(code) || '......';
         }
 
         function persistSignalingUrl(value) {
@@ -6299,7 +3485,6 @@
             const input = document.getElementById('signalingUrlInput');
             if (!input) return;
             persistSignalingUrl(input.value);
-            refreshHostInviteTools();
         }
 
         function readStoredSignalingUrl() {
@@ -6316,12 +3501,7 @@
             const joinButton = document.getElementById('btnStartJoining');
             const resyncButton = document.getElementById('resyncButton');
             const reconnectButton = document.getElementById('reconnectButton');
-            const lobbyButton = document.getElementById('lobbyButton');
-            const lobbyRematchButton = document.getElementById('btnLobbyRematch');
-            const lobbyBackButton = document.getElementById('btnLobbyBackToGame');
-            const lobbyPrimaryButton = document.getElementById('btnLobbyPrimaryAction');
             const isBusy = connectionStatus.connecting || connectionStatus.reconnecting;
-            const onlineMatchEnded = Boolean(bluetoothConnection && window.game?.gameOver);
 
             if (hostButton) {
                 hostButton.dataset.defaultLabel = hostButton.dataset.defaultLabel || hostButton.textContent;
@@ -6347,76 +3527,6 @@
                 reconnectButton.disabled = !bluetoothConnection || connectionStatus.connected || isBusy;
             }
 
-            if (lobbyButton) {
-                lobbyButton.style.display = bluetoothConnection ? 'flex' : 'none';
-                lobbyButton.disabled = !bluetoothConnection;
-            }
-
-            if (lobbyRematchButton) {
-                if (onlineMatchEnded) {
-                    lobbyRematchButton.style.display = 'inline-flex';
-                    const localReady = isHost ? networkMatchState.hostReady : rematchLocalReady;
-                    lobbyRematchButton.disabled = !connectionStatus.connected || isBusy || localReady;
-                    lobbyRematchButton.textContent = isHost
-                        ? (networkMatchState.hostReady ? 'Pret - attente invites' : 'Pret pour rejouer')
-                        : (rematchLocalReady ? 'Demande envoyee' : 'Demander revanche');
-                } else {
-                    lobbyRematchButton.style.display = 'none';
-                }
-            }
-
-            if (lobbyBackButton) {
-                const canReturnToGame = Boolean(window.game);
-                lobbyBackButton.style.display = canReturnToGame ? 'inline-flex' : 'none';
-            }
-
-            if (lobbyPrimaryButton) {
-                lobbyPrimaryButton.style.display = 'inline-flex';
-                let label = 'Action Lobby';
-                let disabled = false;
-
-                if (!bluetoothConnection) {
-                    const hostAreaVisible = document.getElementById('webrtcHostArea')?.style.display === 'flex';
-                    const joinAreaVisible = document.getElementById('webrtcJoinArea')?.style.display === 'flex';
-                    if (hostAreaVisible) {
-                        label = isBusy ? 'Connexion...' : 'Demarrer serveur';
-                        disabled = isBusy;
-                    } else if (joinAreaVisible) {
-                        label = isBusy ? 'Connexion...' : 'Se connecter';
-                        disabled = isBusy;
-                    } else {
-                        label = 'Choisir un role';
-                        disabled = false;
-                    }
-                } else if (!connectionStatus.connected) {
-                    label = isBusy ? 'Reconnexion...' : 'Reconnecter';
-                    disabled = isBusy;
-                } else if (onlineMatchEnded) {
-                    if (isHost) {
-                        label = networkMatchState.hostReady ? 'Attente invites' : 'Valider revanche';
-                        disabled = isBusy || networkMatchState.hostReady;
-                    } else {
-                        label = rematchLocalReady ? 'Demande envoyee' : 'Demander revanche';
-                        disabled = isBusy || rematchLocalReady;
-                    }
-                } else if (!networkMatchState.started) {
-                    if (isHost) {
-                        label = networkMatchState.guestReady ? 'Lancer la manche' : 'En attente joueurs';
-                        disabled = isBusy || !networkMatchState.guestReady || !networkMatchState.hostReady;
-                    } else {
-                        label = 'En attente hote';
-                        disabled = true;
-                    }
-                } else {
-                    label = 'Retour a la manche';
-                    disabled = false;
-                }
-
-                lobbyPrimaryButton.textContent = label;
-                lobbyPrimaryButton.disabled = disabled;
-            }
-
-            refreshSalonQuickActions();
             renderLobbyStatus();
         }
 
@@ -6425,155 +3535,7 @@
             networkMatchState.started = false;
             networkMatchState.hostReady = false;
             networkMatchState.guestReady = false;
-            networkMatchState.readyGuestCount = 0;
-            networkMatchState.requiredGuestCount = getRequiredGuestCount();
-            rematchLocalReady = false;
-            rematchReadyPeerIds.clear();
-            if (isHost) {
-                hostPeerPlayerSlots.clear();
-                hostPeerNames.clear();
-                setLocalNetworkPlayerIndices([0]);
-            } else {
-                localNetworkPlayerIndices = [];
-            }
             renderLobbyStatus();
-        }
-
-        async function onOnlineMatchFinished() {
-            if (!bluetoothConnection || !window.game || !window.game.gameOver) return;
-            if (!networkMatchState.started && !matchStartCountdown.active && !matchStartCountdown.starting) return;
-
-            abortMatchStartCountdown();
-            rematchLocalReady = false;
-            networkMatchState.started = false;
-            networkMatchState.hostReady = false;
-            networkMatchState.guestReady = false;
-            networkMatchState.requiredGuestCount = getRequiredGuestCount();
-
-            if (isHost) {
-                rematchReadyPeerIds.clear();
-                refreshHostPeerAssignments();
-                networkMatchState.readyGuestCount = 0;
-                networkMatchState.guestReady = false;
-
-                if (connectionStatus.connected) {
-                    await sendLobbyStateToPeer();
-                    const gameState = getGameState();
-                    if (gameState) {
-                        await sendBluetoothData({
-                            type: 'sync',
-                            gameState
-                        });
-                    }
-                }
-            } else {
-                networkMatchState.readyGuestCount = 0;
-                if (connectionStatus.connected) {
-                    await sendBluetoothData({ type: 'requestLobbyState' });
-                }
-            }
-
-            updateWebRTCActionButtons();
-            if (window.game && typeof window.game.updateUI === 'function') {
-                window.game.updateUI();
-            }
-            updateLobbyHint();
-        }
-
-        function closeGameOverScreens() {
-            document.querySelectorAll('.game-over-screen').forEach((screen) => screen.remove());
-        }
-
-        function openOnlineLobby(showNotice = false) {
-            if (!bluetoothConnection) {
-                showToast('Salon disponible en mode en ligne.', 'info');
-                return;
-            }
-
-            closeGameOverScreens();
-            navToScreen('screenSalon');
-            renderLobbyStatus();
-            updateWebRTCActionButtons();
-            refreshSalonQuickActions();
-            if (showNotice) {
-                showToast('Salon de session actif.', 'info', 1800);
-                addLobbyActivity('Retour dans le salon.', 'info');
-            }
-        }
-
-        async function requestOnlineRematch() {
-            if (!bluetoothConnection) {
-                restartGame();
-                return;
-            }
-            if (!window.game || !window.game.gameOver) {
-                showToast('La manche n est pas encore terminee.', 'info');
-                return;
-            }
-            if (!connectionStatus.connected) {
-                showToast('Connexion reseau indisponible.', 'error');
-                return;
-            }
-
-            await onOnlineMatchFinished();
-
-            if (isHost) {
-                rematchLocalReady = true;
-                networkMatchState.hostReady = true;
-                refreshHostPeerAssignments();
-                await sendLobbyStateToPeer();
-                updateWebRTCActionButtons();
-                updateLobbyHint();
-                addLobbyActivity('Hote pret pour une nouvelle manche.', 'local');
-
-                if (networkMatchState.guestReady) {
-                    showToast('Tous prets. Lancez la manche depuis le salon.', 'success');
-                } else {
-                    const requiredGuests = getRequiredGuestCount();
-                    const readyGuests = Math.min(networkMatchState.readyGuestCount, requiredGuests);
-                    showToast(`Pret. En attente joueurs (${readyGuests}/${requiredGuests}).`, 'info');
-                }
-            } else {
-                if (rematchLocalReady) {
-                    showToast('Demande deja envoyee. Attendez l hote.', 'info');
-                    openOnlineLobby(false);
-                    return;
-                }
-                rematchLocalReady = true;
-                const sent = await sendBluetoothData({
-                    type: 'rematchReady',
-                    guestName: normalizePlayerName(getPlayerName('player1Name', 'Joueur'), 'Joueur')
-                });
-                if (!sent) {
-                    rematchLocalReady = false;
-                    showToast('Impossible d envoyer la demande de revanche.', 'error');
-                    return;
-                }
-                showToast('Demande de revanche envoyee.', 'success');
-                addLobbyActivity('Demande de revanche envoyee a l hote.', 'local');
-            }
-
-            openOnlineLobby(false);
-            updateWebRTCActionButtons();
-        }
-
-        function handleGameOverReplayAction() {
-            if (bluetoothConnection) {
-                requestOnlineRematch().catch((error) => {
-                    console.error('Erreur de rematch:', error);
-                    showToast('Impossible de relancer la manche.', 'error');
-                });
-                return;
-            }
-            restartGame();
-        }
-
-        function handleGameOverMenuAction() {
-            if (bluetoothConnection) {
-                openOnlineLobby(false);
-                return;
-            }
-            restartGame();
         }
 
         function updateLobbyHint() {
@@ -6584,26 +3546,26 @@
             const countdownSeconds = getMatchCountdownRemainingSeconds();
 
             if (isMatchCountdownRunning()) {
-                setTurnHintMessage(`Demarrage dans ${countdownSeconds}s...`, { persistent: true });
+                setTurnHintMessage(`Demarrage automatique dans ${countdownSeconds}s...`, { persistent: true });
             } else {
                 setTurnHintMessage(
                     isHost
                         ? (networkMatchState.guestReady
-                            ? 'Joueurs prets. Lancez la manche.'
-                            : 'En attente des joueurs invites.')
-                        : 'En attente du lancement par l hote.',
+                            ? 'Adversaire pret. Demarrage automatique...'
+                            : 'En attente que l adversaire soit pret.')
+                        : 'En attente du demarrage automatique par l hote.',
                     { persistent: true }
                 );
             }
             if (gameHint) {
                 if (isMatchCountdownRunning()) {
-                    gameHint.textContent = `Lobby pret. Demarrage dans ${countdownSeconds}s.`;
+                    gameHint.textContent = `Lobby pret. Demarrage automatique dans ${countdownSeconds}s.`;
                 } else {
                     gameHint.textContent = isHost
                         ? (networkMatchState.guestReady
-                            ? 'Lobby pret. Lancez la manche quand vous voulez.'
-                            : 'Lobby en attente des joueurs invites.')
-                        : 'Lobby connecte. En attente du lancement par l hote.';
+                            ? 'Lobby pret. Demarrage automatique en cours.'
+                            : 'Lobby en attente du joueur adverse.')
+                        : 'Lobby connecte. En attente du demarrage automatique.';
                 }
             }
         }
@@ -6619,18 +3581,6 @@
             if (payload.guestReady !== undefined) {
                 networkMatchState.guestReady = Boolean(payload.guestReady);
             }
-            if (payload.readyGuestCount !== undefined) {
-                const readyCount = Number.parseInt(payload.readyGuestCount, 10);
-                if (Number.isFinite(readyCount) && readyCount >= 0) {
-                    networkMatchState.readyGuestCount = readyCount;
-                }
-            }
-            if (payload.requiredGuestCount !== undefined) {
-                const requiredCount = Number.parseInt(payload.requiredGuestCount, 10);
-                if (Number.isFinite(requiredCount) && requiredCount >= 1) {
-                    networkMatchState.requiredGuestCount = requiredCount;
-                }
-            }
             if (payload.started !== undefined) {
                 startedUpdated = true;
                 startedValue = Boolean(payload.started);
@@ -6639,8 +3589,6 @@
 
             if (startedUpdated && startedValue) {
                 abortMatchStartCountdown();
-                rematchLocalReady = false;
-                rematchReadyPeerIds.clear();
                 if (window.game && !window.game.gameOver) {
                     window.game.startTurnTimer(true);
                 }
@@ -6655,74 +3603,12 @@
 
         async function sendLobbyStateToPeer() {
             if (!isHost || !connectionStatus.connected) return;
-            refreshHostPeerAssignments();
-            const readyGuestCount = isOnlineRematchLobby()
-                ? Math.max(0, Number.parseInt(networkMatchState.readyGuestCount, 10) || 0)
-                : getReadyPeerIds().length;
-            const requiredGuestCount = getRequiredGuestCount();
             await sendBluetoothData({
                 type: 'lobbyState',
                 hostReady: networkMatchState.hostReady,
                 guestReady: networkMatchState.guestReady,
-                started: networkMatchState.started,
-                readyGuestCount,
-                requiredGuestCount
+                started: networkMatchState.started
             });
-        }
-
-        async function sendHostSessionInfoToPeer(targetId) {
-            if (!isHost || !connectionStatus.connected || !targetId) return false;
-
-            const hostCode = bluetoothSession.code || generateSessionCode();
-            bluetoothSession.code = hostCode;
-            bluetoothSession.expectedCode = hostCode;
-            bluetoothSession.verified = true;
-
-            const onlinePlayersCount = normalizeOnlinePlayersCount(
-                window.game?.players?.length || bluetoothSession.hostConfig?.onlinePlayersCount || 2
-            );
-            const gameOptions = window.game
-                ? {
-                    blitzEnabled: Boolean(window.game.blitzEnabled),
-                    blitzTurnSeconds: window.game.turnDurationMs ? window.game.turnDurationMs / 1000 : 10,
-                    gravityEnabled: Boolean(window.game.gravityEnabled),
-                    hyperNexusEnabled: Boolean(window.game.hyperNexusEnabled),
-                    obstacleEnabled: Boolean(window.game.obstacleEnabled),
-                    obstacleDensity: normalizeObstacleDensity(window.game.obstacleDensity)
-                }
-                : normalizeHostGameOptions(bluetoothSession.hostConfig?.gameOptions);
-
-            const playerNames = window.game
-                ? window.game.players.map((player, idx) => normalizePlayerName(player?.name, `Joueur ${idx + 1}`))
-                : normalizeHostPlayerNames(bluetoothSession.hostConfig?.onlinePlayerNames, onlinePlayersCount);
-            const playerColors = window.game
-                ? window.game.players.map((player) => String(player?.color || '#328DCB'))
-                : normalizeHostPlayerColors(bluetoothSession.hostConfig?.onlinePlayerColors, onlinePlayersCount);
-            const assignedPlayerIndex = hostPeerPlayerSlots.get(targetId);
-
-            return sendBluetoothData({
-                type: 'sessionInfo',
-                code: hostCode,
-                hostName: normalizePlayerName(getPlayerName('player1Name', 'Hote'), 'Hote'),
-                gridSize: window.game ? window.game.size : normalizeGridSize(bluetoothSession.hostConfig?.gridSize ?? 8),
-                onlinePlayersCount,
-                playerNames,
-                playerColors,
-                gameOptions,
-                assignedPlayerIndex: Number.isInteger(assignedPlayerIndex) ? assignedPlayerIndex : null
-            }, { targetId });
-        }
-
-        async function syncHostNetworkState() {
-            if (!isHost || !connectionStatus.connected) return;
-            refreshHostPeerAssignments();
-            const readyPeerIds = getReadyPeerIds();
-            for (const peerId of readyPeerIds) {
-                await sendHostSessionInfoToPeer(peerId);
-            }
-            await sendLobbyStateToPeer();
-            updateWebRTCActionButtons();
-            updateLobbyHint();
         }
 
         async function hostStartMatch() {
@@ -6739,13 +3625,13 @@
                 return;
             }
             if (!networkMatchState.guestReady) {
-                showToast('Tous les joueurs invites ne sont pas encore prets.', 'info');
+                showToast('Adversaire pas encore pret.', 'info');
                 return;
             }
             await startNetworkMatchCountdown({ broadcast: true });
         }
 
-        async function copyTextToClipboard(value, successMessage, options = null) {
+        async function copyTextToClipboard(value, successMessage) {
             const text = String(value || '').trim();
             if (!text) {
                 showToast('Aucune valeur a copier.', 'info');
@@ -6767,12 +3653,6 @@
                     fallbackInput.remove();
                 }
                 showToast(successMessage, 'success');
-                if (options?.buttonId) {
-                    setCopyButtonFeedback(
-                        options.buttonId,
-                        String(options.buttonSuccessLabel || 'Copie')
-                    );
-                }
                 return true;
             } catch (_error) {
                 showToast('Impossible de copier automatiquement.', 'error');
@@ -6786,16 +3666,11 @@
                 showToast('Code de session indisponible.', 'info');
                 return;
             }
-            await copyTextToClipboard(code, `Code ${code} copie.`, {
-                buttonId: 'btnCopyHostCode',
-                buttonSuccessLabel: 'Code copie'
-            });
+            await copyTextToClipboard(code, `Code ${code} copie.`);
         }
 
         function buildSessionInviteLink() {
-            const code = sanitizeSessionCode(
-                bluetoothSession.code || document.getElementById('hostSessionCodeDisplay')?.textContent || ''
-            );
+            const code = sanitizeSessionCode(bluetoothSession.code);
             if (!code) return '';
 
             const base = new URL(window.location.href);
@@ -6816,10 +3691,7 @@
                 showToast('Lien indisponible: code de session manquant.', 'info');
                 return;
             }
-            await copyTextToClipboard(inviteLink, 'Lien d invitation copie.', {
-                buttonId: 'btnCopyInviteLink',
-                buttonSuccessLabel: 'Lien copie'
-            });
+            await copyTextToClipboard(inviteLink, 'Lien d invitation copie.');
         }
 
         function applyWebRTCParamsFromUrl() {
@@ -6903,7 +3775,7 @@
             bluetoothSession.expectedCode = code;
             bluetoothSession.verified = true;
             reconnectionBlockedReason = null;
-            setHostSessionCodeDisplay(code, { trackRecent: true });
+            setHostSessionCodeDisplay(code);
             setSessionCodePreview(`Code de session hote: ${code}`);
             updateConnectionStatus({
                 sessionCode: code,
@@ -6968,82 +3840,12 @@
             return pingSequence;
         }
 
-        function getPingTrackingKey(peerId, pingId) {
-            return `${String(peerId || 'host')}:${Number.parseInt(pingId, 10) || 0}`;
-        }
-
-        function clearPendingPingsForPeer(peerId) {
-            const normalizedPeerId = String(peerId || '').trim();
-            if (!normalizedPeerId || pendingPings.size === 0) return;
-            for (const [trackingKey, tracking] of pendingPings.entries()) {
-                if (tracking?.peerId === normalizedPeerId || String(trackingKey).startsWith(`${normalizedPeerId}:`)) {
-                    pendingPings.delete(trackingKey);
-                }
-            }
-        }
-
-        function refreshHostAggregateLatency() {
-            if (!isHost) return;
-            const values = Array.from(peerLatencyById.values())
-                .map((entry) => Number.parseInt(entry?.latencyMs, 10))
-                .filter((value) => Number.isFinite(value) && value >= 0);
-            if (values.length === 0) {
-                updateConnectionStatus({
-                    latencyMs: null,
-                    latencyQuality: 'unknown'
-                });
-                return;
-            }
-
-            const averageMs = Math.max(0, Math.round(values.reduce((sum, value) => sum + value, 0) / values.length));
-            updateConnectionStatus({
-                latencyMs: averageMs,
-                latencyQuality: evaluateLatencyQuality(averageMs)
-            });
-        }
-
-        function updatePeerLatency(peerId, latencyMs) {
-            const normalizedPeerId = String(peerId || '').trim();
-            if (!normalizedPeerId || !Number.isFinite(latencyMs) || latencyMs < 0) return;
-
-            const roundedMs = Math.max(0, Math.round(latencyMs));
-            peerLatencyById.set(normalizedPeerId, {
-                latencyMs: roundedMs,
-                quality: evaluateLatencyQuality(roundedMs),
-                updatedAt: Date.now()
-            });
-
-            if (isHost) {
-                refreshHostAggregateLatency();
-                renderLobbyStatus();
-                return;
-            }
-
-            updateConnectionStatus({
-                latencyMs: roundedMs,
-                latencyQuality: evaluateLatencyQuality(roundedMs)
-            });
-        }
-
-        function removePeerLatency(peerId) {
-            const normalizedPeerId = String(peerId || '').trim();
-            if (!normalizedPeerId) return;
-            peerLatencyById.delete(normalizedPeerId);
-            clearPendingPingsForPeer(normalizedPeerId);
-            if (isHost) {
-                refreshHostAggregateLatency();
-                renderLobbyStatus();
-            }
-        }
-
         function clearLatencyState() {
             pendingPings.clear();
-            peerLatencyById.clear();
             updateConnectionStatus({
                 latencyMs: null,
                 latencyQuality: 'unknown'
             });
-            renderLobbyStatus();
         }
 
         async function sleepWithProgress(durationMs, onTick) {
@@ -7085,34 +3887,6 @@
         function resetPeerConnection(keepSignaling = true) {
             if (!bluetoothConnection) return;
 
-            for (const peer of bluetoothPeers.values()) {
-                try {
-                    if (peer?.dataChannel) {
-                        peer.dataChannel.onopen = null;
-                        peer.dataChannel.onmessage = null;
-                        peer.dataChannel.onerror = null;
-                        peer.dataChannel.onclose = null;
-                        peer.dataChannel.close();
-                    }
-                } catch (_error) {
-                    // Ignore close errors.
-                }
-                try {
-                    if (peer?.peerConnection) {
-                        peer.peerConnection.onicecandidate = null;
-                        peer.peerConnection.onconnectionstatechange = null;
-                        peer.peerConnection.oniceconnectionstatechange = null;
-                        peer.peerConnection.ondatachannel = null;
-                        peer.peerConnection.close();
-                    }
-                } catch (_error) {
-                    // Ignore close errors.
-                }
-            }
-            bluetoothPeers.clear();
-            hostPeerPlayerSlots.clear();
-            hostPeerNames.clear();
-
             if (bluetoothConnection.dataChannel) {
                 try {
                     bluetoothConnection.dataChannel.onopen = null;
@@ -7146,10 +3920,7 @@
 
         function disconnectBluetoothDevice() {
             resetPeerConnection(false);
-            localNetworkPeerId = null;
-            localNetworkPlayerIndices = [];
             bluetoothConnection = null;
-            clearLobbyActivityFeed();
         }
 
         function sleep(ms) {
@@ -7379,15 +4150,11 @@
             sendSignalingMessage({
                 type: 'join',
                 room: normalizedCode,
-                role: bluetoothConnection.role,
-                maxPeers: isHost ? getExpectedOnlinePlayersCount() : undefined,
-                peerId: !isHost ? (localNetworkPeerId || undefined) : undefined
+                role: bluetoothConnection.role
             });
             updateConnectionStatus({
                 sessionCode: normalizedCode,
-                statusDetail: isHost
-                    ? 'Signalisation connectee. En attente des joueurs...'
-                    : 'Signalisation connectee. En attente de l hote...'
+                statusDetail: 'Signalisation connectee. En attente de l adversaire...'
             });
         }
 
@@ -7482,13 +4249,8 @@
 
             channel.onopen = () => {
                 peer.ready = true;
-                touchBluetoothActivity();
-                if (isHost) {
-                    refreshHostPeerAssignments();
-                    void syncHostNetworkState();
-                }
                 if (pendingDataChannelReady?.resolve) {
-                    if (!isHost || getReadyPeerIds().length >= 1) {
+                    if (!isHost || (isHost && bluetoothPeers.size >= 1)) {
                         pendingDataChannelReady.resolve(true);
                         pendingDataChannelReady = null;
                     }
@@ -7550,28 +4312,14 @@
             if (!bluetoothConnection || !connectionStatus.connected) return;
 
             abortMatchStartCountdown();
-            rematchLocalReady = false;
-            rematchReadyPeerIds.clear();
             networkMatchState.started = false;
             networkMatchState.hostReady = true;
-            networkMatchState.guestReady = !isHost;
-            networkMatchState.requiredGuestCount = getRequiredGuestCount();
-            networkMatchState.readyGuestCount = isHost ? getReadyPeerIds().length : 1;
-            if (isHost) {
-                refreshHostPeerAssignments();
-            }
-            openOnlineLobby(false);
+            networkMatchState.guestReady = isHost ? false : true;
             updateWebRTCActionButtons();
             updateLobbyHint();
-            addLobbyActivity(
-                isHost
-                    ? 'Salon initialise. En attente des joueurs...'
-                    : 'Connecte au salon. En attente de l hote...',
-                'info'
-            );
 
             if (isHost) {
-                await syncHostNetworkState();
+                await sendLobbyStateToPeer();
                 return;
             }
 
@@ -7625,37 +4373,23 @@
                     if (message.role === 'host' || message.role === 'guest') {
                         bluetoothConnection.role = message.role;
                     }
-                    if (message.peerId) {
-                        localNetworkPeerId = String(message.peerId);
-                    }
-                    if (isHost) {
-                        setLocalNetworkPlayerIndices([0]);
-                        refreshHostPeerAssignments();
-                        const readyCount = getReadyPeerIds().length;
-                        const requiredGuests = getRequiredGuestCount();
-                        updateConnectionStatus({
-                            statusDetail: `Salon cree. Joueurs connectes ${readyCount}/${requiredGuests}.`
-                        });
+                    if (Number.isFinite(message.peerCount) && message.peerCount >= 2) {
+                        bluetoothConnection.peerReady = true;
+                        updateConnectionStatus({ statusDetail: 'Adversaire detecte. Negotiation WebRTC...' });
                     } else {
-                        if (!localNetworkPlayerIndices.length) {
-                            setLocalNetworkPlayerIndices([1]);
-                        }
-                        updateConnectionStatus({ statusDetail: 'Salon rejoint. En attente de l hote...' });
+                        updateConnectionStatus({ statusDetail: 'Salon cree. En attente de l adversaire...' });
                     }
                     break;
                 case 'peer-ready':
-                    if (isHost && fromId !== 'host') {
-                        bluetoothConnection.peerReady = true;
-                        updateConnectionStatus({ statusDetail: `Joueur ${fromId} connecte. Negotiation WebRTC...` });
+                    bluetoothConnection.peerReady = true;
+                    updateConnectionStatus({ statusDetail: 'Adversaire connecte. Negotiation WebRTC...' });
+                    if (isHost) {
                         await createOfferAndSend(fromId);
-                    } else if (!isHost && fromId === 'host') {
-                        bluetoothConnection.peerReady = true;
-                        updateConnectionStatus({ statusDetail: 'Hote connecte. Negotiation WebRTC...' });
                     }
                     break;
                 case 'peer-left':
                     if (isHost && fromId !== 'host') {
-                        await handlePeerDisconnection(fromId);
+                        handlePeerDisconnection(fromId);
                     } else {
                         bluetoothConnection.peerReady = false;
                         showToast('Maitre deconnecte, reprise automatique...', 'info');
@@ -7710,7 +4444,7 @@
         }
 
         function waitForDataChannelOpen(timeoutMs = WEBRTC_CONNECT_TIMEOUT) {
-            if (hasOpenDataChannel()) {
+            if (bluetoothConnection?.dataChannel?.readyState === 'open') {
                 return Promise.resolve(true);
             }
 
@@ -7723,7 +4457,7 @@
                         pendingDataChannelReady = null;
                     }
                     const roleMessage = isHost
-                        ? 'Aucun joueur invite detecte. Verifiez le code et reessayez.'
+                        ? 'Aucun adversaire detecte. Verifiez le code et reessayez.'
                         : 'Connexion WebRTC non etablie. Verifiez le code et le serveur.';
                     reject(createBluetoothError(roleMessage));
                 }, timeoutMs);
@@ -7773,7 +4507,7 @@
             autoResyncTickInFlight = true;
 
             try {
-                if (!hasOpenDataChannel()) {
+                if (!bluetoothConnection?.dataChannel || bluetoothConnection.dataChannel.readyState !== 'open') {
                     return;
                 }
                 if (!connectionStatus.connected || reconnectInProgress || connectionStatus.connecting || connectionStatus.reconnecting) {
@@ -7836,55 +4570,28 @@
             pendingPings.clear();
 
             heartbeatIntervalId = setInterval(() => {
-                if (!hasOpenDataChannel()) {
+                if (!bluetoothConnection?.dataChannel || bluetoothConnection.dataChannel.readyState !== 'open') {
                     return;
                 }
                 if (!connectionStatus.connected || reconnectInProgress) {
                     return;
                 }
                 const now = performance.now();
-                pendingPings.forEach((tracking, trackingKey) => {
-                    const sentAt = Number(tracking?.sentAt);
-                    if (!Number.isFinite(sentAt) || now - sentAt > HEARTBEAT_TIMEOUT) {
-                        pendingPings.delete(trackingKey);
+                pendingPings.forEach((sentAt, pingId) => {
+                    if (now - sentAt > HEARTBEAT_TIMEOUT) {
+                        pendingPings.delete(pingId);
                     }
                 });
-
-                if (isHost) {
-                    const targetPeerIds = getReadyPeerIds();
-                    for (const targetPeerId of targetPeerIds) {
-                        const pingId = getNextPingId();
-                        const trackingKey = getPingTrackingKey(targetPeerId, pingId);
-                        pendingPings.set(trackingKey, {
-                            sentAt: performance.now(),
-                            peerId: targetPeerId,
-                            pingId
-                        });
-                        sendBluetoothData({ type: 'ping', id: pingId, ts: Date.now() }, { targetId: targetPeerId }).catch(() => {
-                            pendingPings.delete(trackingKey);
-                        });
-                    }
-                    return;
-                }
 
                 const pingId = getNextPingId();
-                const targetPeerId = 'host';
-                const trackingKey = getPingTrackingKey(targetPeerId, pingId);
-                pendingPings.set(trackingKey, {
-                    sentAt: performance.now(),
-                    peerId: targetPeerId,
-                    pingId
-                });
+                pendingPings.set(pingId, performance.now());
                 sendBluetoothData({ type: 'ping', id: pingId, ts: Date.now() }).catch(() => {
-                    pendingPings.delete(trackingKey);
+                    pendingPings.delete(pingId);
                 });
             }, HEARTBEAT_INTERVAL);
 
             heartbeatWatchdogId = setInterval(() => {
-                const peerConnectionReady = isHost
-                    ? bluetoothPeers.size > 0
-                    : Boolean(bluetoothConnection?.peerConnection);
-                if (!peerConnectionReady || !connectionStatus.connected || reconnectInProgress) {
+                if (!bluetoothConnection?.peerConnection || !connectionStatus.connected || reconnectInProgress) {
                     return;
                 }
                 if (Date.now() - lastBluetoothActivityAt <= HEARTBEAT_TIMEOUT) {
@@ -7940,10 +4647,6 @@
                 pendingIceCandidates: []
             };
             isHost = hostRole;
-            localNetworkPeerId = hostRole ? 'host' : null;
-            localNetworkPlayerIndices = hostRole ? [0] : [];
-            hostPeerPlayerSlots.clear();
-            hostPeerNames.clear();
             reconnectInProgress = false;
             resetNetworkMatchState();
             resetBluetoothTransportState();
@@ -7994,10 +4697,8 @@
                         message = 'WebRTC non supporte sur ce navigateur.';
                         break;
                     default:
-                        if (String(error?.message || '').toLowerCase().includes('session complete')) {
-                            message = 'Ce salon est deja complet.';
-                        } else if (String(error?.message || '').toLowerCase().includes('role guest est deja occupe')) {
-                            message = 'Ce salon est deja complet.';
+                        if (String(error?.message || '').toLowerCase().includes('role guest est deja occupe')) {
+                            message = 'Ce salon est deja complet (2 appareils max). Pour jouer a 3/4, utilisez 1 hote + 1 invite.';
                         } else {
                             message = `Erreur de connexion: ${error.message}`;
                         }
@@ -8047,22 +4748,14 @@
 
         async function handlePeerDisconnection(targetId) {
             if (isHost && targetId && targetId !== 'host') {
-                const removedSlot = hostPeerPlayerSlots.get(targetId);
                 const peer = bluetoothPeers.get(targetId);
                 if (peer) {
                     try { peer.dataChannel?.close(); } catch(e) {}
                     try { peer.peerConnection?.close(); } catch(e) {}
                     bluetoothPeers.delete(targetId);
                 }
-                hostPeerPlayerSlots.delete(targetId);
-                hostPeerNames.delete(targetId);
-                rematchReadyPeerIds.delete(targetId);
-                removePeerLatency(targetId);
-                refreshHostPeerAssignments();
-                const slotLabel = Number.isInteger(removedSlot) ? `Joueur ${removedSlot + 1}` : 'Un joueur';
-                showToast(`${slotLabel} s est deconnecte.`, 'info');
-                addLobbyActivity(`${slotLabel} s est deconnecte du salon.`, 'warning');
-                await syncHostNetworkState();
+                showToast('Un joueur s_est deconnecte.', 'info');
+                // Could handle reconnecting or AI takeover here
                 updateWebRTCActionButtons();
             } else {
                 handleDisconnection();
@@ -8131,10 +4824,9 @@
                     bluetoothConnection.pendingIceCandidates = [];
 
                     await connectSignalingSocket(sessionCode);
-                    if (!isHost) {
-                        setupPeerConnectionIfNeeded('host');
-                    } else {
-                        refreshHostPeerAssignments();
+                    setupPeerConnectionIfNeeded();
+                    if (isHost && bluetoothConnection.peerReady) {
+                        await createOfferAndSend();
                     }
                     await waitForDataChannelOpen();
                     bluetoothConnection.listenersAttached = true;
@@ -8302,7 +4994,7 @@
             }
             const players = buildOnlinePlayersFromConfig(onlineConfig);
 
-            openOnlineLobby(false);
+            showGameView();
 
             window.game = new Game(players, false, selectedGridSize, gameOptions);
             const undoButton = document.getElementById('undoButton');
@@ -8325,13 +5017,13 @@
                 ? ` | Session ${bluetoothSession.code}`
                 : (bluetoothSession.expectedCode ? ` | Session attendue ${bluetoothSession.expectedCode}` : '');
             showToast(
-                `Salon WebRTC pret (${selectedGridSize}x${selectedGridSize}${playersSuffix}${blitzSuffix}${obstaclesSuffix}${sessionSuffix}).`,
+                `Partie WebRTC lancee (${selectedGridSize}x${selectedGridSize}${playersSuffix}${blitzSuffix}${obstaclesSuffix}${sessionSuffix}).`,
                 'success'
             );
         }
 
         async function announceBluetoothSession() {
-            if (!hasOpenDataChannel()) {
+            if (!bluetoothConnection?.dataChannel || bluetoothConnection.dataChannel.readyState !== 'open') {
                 return;
             }
             if (!connectionStatus.connected) {
@@ -8343,14 +5035,30 @@
                 bluetoothSession.code = code;
                 bluetoothSession.expectedCode = code;
                 bluetoothSession.verified = true;
-                setHostSessionCodeDisplay(code, { trackRecent: true });
+                setHostSessionCodeDisplay(code);
                 setSessionCodePreview(`Code de session hote: ${code}`);
                 updateConnectionStatus({
                     sessionCode: code,
                     sessionVerified: true
                 });
 
-                await syncHostNetworkState();
+                await sendBluetoothData({
+                    type: 'sessionInfo',
+                    code,
+                    hostName: normalizePlayerName(getPlayerName('player1Name', 'Hote'), 'Hote'),
+                    gridSize: window.game ? window.game.size : 8,
+                    onlinePlayersCount: normalizeOnlinePlayersCount(window.game?.players?.length || 2),
+                    playerNames: window.game ? window.game.players.map((player, idx) => normalizePlayerName(player?.name, `Joueur ${idx + 1}`)) : [],
+                    playerColors: window.game ? window.game.players.map((player) => String(player?.color || '#328DCB')) : [],
+                    gameOptions: window.game ? {
+                        blitzEnabled: window.game.blitzEnabled,
+                        blitzTurnSeconds: window.game.turnDurationMs ? window.game.turnDurationMs / 1000 : 10,
+                        gravityEnabled: window.game.gravityEnabled,
+                        hyperNexusEnabled: window.game.hyperNexusEnabled,
+                        obstacleEnabled: window.game.obstacleEnabled,
+                        obstacleDensity: normalizeObstacleDensity(window.game.obstacleDensity)
+                    } : {}
+                });
                 return;
             }
 
@@ -8391,10 +5099,9 @@
                 bluetoothConnection.pendingIceCandidates = [];
 
                 await connectSignalingSocket(sessionCode);
-                if (!isHost) {
-                    setupPeerConnectionIfNeeded('host');
-                } else {
-                    refreshHostPeerAssignments();
+                setupPeerConnectionIfNeeded();
+                if (isHost && bluetoothConnection.peerReady) {
+                    await createOfferAndSend();
                 }
                 updateConnectionStatus({
                     statusDetail: 'Connexion du canal de donnees...'
@@ -8422,217 +5129,14 @@
             }
         }
 
-        function normalizeRemoteMove(move) {
-            if (!move || typeof move !== 'object') return null;
-            const x = Number(move.x);
-            const y = Number(move.y);
-            if (!Number.isInteger(x) || !Number.isInteger(y)) return null;
-            return { x, y };
-        }
-
-        function getMoveRejectMessage(reason) {
-            switch (reason) {
-                case 'unassigned_slot':
-                    return 'Coup refuse: aucun slot joueur attribue.';
-                case 'match_not_started':
-                    return 'Coup refuse: la manche n est pas encore demarree.';
-                case 'game_not_ready':
-                    return 'Coup refuse: partie non initialisee.';
-                case 'invalid_coordinates':
-                    return 'Coup refuse: coordonnees invalides.';
-                case 'out_of_bounds':
-                    return 'Coup refuse: en dehors de la grille.';
-                case 'not_your_turn':
-                    return 'Coup refuse: ce n est pas votre tour.';
-                case 'occupied_point':
-                    return 'Coup refuse: point deja occupe.';
-                case 'obstacle_point':
-                    return 'Coup refuse: point bloque par un obstacle.';
-                case 'game_over':
-                    return 'Coup refuse: partie terminee.';
-                default:
-                    return 'Coup refuse par l hote.';
-            }
-        }
-
-        async function rejectRemoteMove(targetId, {
-            move = null,
-            reason = 'invalid_move',
-            message = '',
-            actingPlayerIndex = null,
-            includeSync = true
-        } = {}) {
-            if (!isHost || !targetId || targetId === 'host') return;
-            if (!connectionStatus.connected) return;
-            await sendBluetoothData({
-                type: 'moveReject',
-                reason,
-                message: message || getMoveRejectMessage(reason),
-                move,
-                playerIndex: Number.isInteger(actingPlayerIndex) ? actingPlayerIndex : null,
-                gameState: includeSync ? getGameState() : null
-            }, { targetId });
-        }
-
-        async function handleRemoteMove(move, targetId = 'host', forcedPlayerIndex = null) {
-            const normalizedMove = normalizeRemoteMove(move);
-            if (!window.game) {
-                if (isHost && targetId && targetId !== 'host') {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'game_not_ready',
-                        includeSync: false
-                    });
-                }
-                return;
-            }
-
-            const playersCount = window.game.players?.length || 2;
-            const remoteIndices = getRemotePlayerIndices(playersCount);
-            let actingPlayerIndex = Number.isInteger(forcedPlayerIndex)
-                ? forcedPlayerIndex
-                : window.game.currentPlayerIndex;
-
-            if (isHost && targetId && targetId !== 'host') {
-                const assignedIndex = hostPeerPlayerSlots.get(targetId);
-                if (!Number.isInteger(assignedIndex)) {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'unassigned_slot',
-                        actingPlayerIndex: assignedIndex
-                    });
-                    return;
-                }
-                actingPlayerIndex = assignedIndex;
-
-                if (!networkMatchState.started) {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'match_not_started',
-                        actingPlayerIndex
-                    });
-                    return;
-                }
-
-                if (window.game.gameOver) {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'game_over',
-                        actingPlayerIndex
-                    });
-                    return;
-                }
-
-                if (!normalizedMove) {
-                    await rejectRemoteMove(targetId, {
-                        move: null,
-                        reason: 'invalid_coordinates',
-                        actingPlayerIndex
-                    });
-                    return;
-                }
-            }
-
-            if (!normalizedMove) {
-                if (!isHost) {
-                    await sendBluetoothData({ type: 'requestSync' });
-                }
-                return;
-            }
-
-            const maxCoordinate = window.game.size;
-            if (
-                normalizedMove.x < 0 || normalizedMove.y < 0 ||
-                normalizedMove.x > maxCoordinate || normalizedMove.y > maxCoordinate
-            ) {
-                if (isHost && targetId && targetId !== 'host') {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'out_of_bounds',
-                        actingPlayerIndex
-                    });
-                } else if (!isHost) {
-                    await sendBluetoothData({ type: 'requestSync' });
-                }
-                return;
-            }
-
-            const pointKey = `${normalizedMove.x},${normalizedMove.y}`;
-
-            if (!remoteIndices.includes(actingPlayerIndex)) {
-                if (isHost && targetId && targetId !== 'host') {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'unassigned_slot',
-                        actingPlayerIndex
-                    });
-                } else if (!isHost) {
-                    await sendBluetoothData({ type: 'requestSync' });
-                }
-                return;
-            }
-
-            if (window.game.currentPlayerIndex !== actingPlayerIndex) {
-                if (isHost && targetId && targetId !== 'host') {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'not_your_turn',
-                        actingPlayerIndex
-                    });
-                } else if (!isHost) {
-                    await sendBluetoothData({ type: 'requestSync' });
-                }
-                return;
-            }
-
-            if (window.game.isObstacleKey(pointKey)) {
-                if (isHost && targetId && targetId !== 'host') {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'obstacle_point',
-                        actingPlayerIndex
-                    });
-                } else if (!isHost) {
-                    await sendBluetoothData({ type: 'requestSync' });
-                }
-                return;
-            }
-
-            if (window.game.points.has(pointKey)) {
-                if (isHost && targetId && targetId !== 'host') {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'occupied_point',
-                        actingPlayerIndex
-                    });
-                } else if (!isHost) {
-                    await sendBluetoothData({ type: 'requestSync' });
-                }
-                return;
-            }
-
-            const pointsBefore = window.game.points.size;
-            await window.game.handlePointClick(normalizedMove.x, normalizedMove.y, 'remote', actingPlayerIndex);
-
-            if (!window.game.points.has(pointKey) || window.game.points.size <= pointsBefore) {
-                if (isHost && targetId && targetId !== 'host') {
-                    await rejectRemoteMove(targetId, {
-                        move: normalizedMove,
-                        reason: 'invalid_move',
-                        actingPlayerIndex
-                    });
-                } else if (!isHost) {
-                    await sendBluetoothData({ type: 'requestSync' });
-                }
-                return;
-            }
-
+        async function handleRemoteMove(move) {
+            if (!window.game) return;
+            const remoteIndices = getRemotePlayerIndices(window.game.players?.length || 2);
+            if (!remoteIndices.includes(window.game.currentPlayerIndex)) return;
+            await window.game.handlePointClick(move.x, move.y, 'remote');
             if (isHost) {
-                await sendBluetoothData({
-                    type: 'move',
-                    move: normalizedMove,
-                    playerIndex: actingPlayerIndex
-                }, { excludeTargetId: targetId });
+                // rebroadcast
+                sendBluetoothData({ type: 'move', move: move });
             }
         }
 
@@ -8650,22 +5154,37 @@
             touchBluetoothActivity();
             switch (data.type) {
                 case 'move':
-                    await handleRemoteMove(
-                        data.move,
-                        targetId,
-                        Number.parseInt(data.playerIndex, 10)
-                    );
+                    await handleRemoteMove(data.move);
                     break;
                 case 'sessionHello':
                     if (isHost) {
                         const expectedCode = sanitizeSessionCode(data.expectedCode);
                         const hostCode = bluetoothSession.code || generateSessionCode();
-                        const guestName = normalizePlayerName(data.playerName, 'Joueur');
+                        const guestName = normalizePlayerName(data.playerName, 'Adversaire');
                         bluetoothSession.code = hostCode;
                         bluetoothSession.expectedCode = hostCode;
-                        hostPeerNames.set(targetId, guestName);
-                        refreshHostPeerAssignments();
-                        await sendHostSessionInfoToPeer(targetId);
+                        applyNetworkPlayerNames({ guestName });
+                        networkMatchState.guestReady = true;
+
+                        await sendBluetoothData({
+                            type: 'sessionInfo',
+                            code: hostCode,
+                            hostName: normalizePlayerName(getPlayerName('player1Name', 'Hote'), 'Hote'),
+                            match: !expectedCode || expectedCode === hostCode,
+                            expectedCode: expectedCode || null,
+                            gridSize: window.game ? window.game.size : 8,
+                            onlinePlayersCount: normalizeOnlinePlayersCount(window.game?.players?.length || 2),
+                            playerNames: window.game ? window.game.players.map((player, idx) => normalizePlayerName(player?.name, `Joueur ${idx + 1}`)) : [],
+                            playerColors: window.game ? window.game.players.map((player) => String(player?.color || '#328DCB')) : [],
+                            gameOptions: window.game ? {
+                                blitzEnabled: window.game.blitzEnabled,
+                                blitzTurnSeconds: window.game.turnDurationMs ? window.game.turnDurationMs / 1000 : 10,
+                                gravityEnabled: window.game.gravityEnabled,
+                                hyperNexusEnabled: window.game.hyperNexusEnabled,
+                                obstacleEnabled: window.game.obstacleEnabled,
+                                obstacleDensity: normalizeObstacleDensity(window.game.obstacleDensity)
+                            } : {}
+                        });
                         updateConnectionStatus({
                             sessionCode: hostCode,
                             sessionVerified: true
@@ -8674,11 +5193,10 @@
                         if (expectedCode && expectedCode !== hostCode) {
                             showToast('Code saisi par le client different du code hote.', 'info');
                         }
-
-                        addLobbyActivity(`${guestName} a rejoint le salon.`, 'info');
                         await sendLobbyStateToPeer();
                         updateWebRTCActionButtons();
                         updateLobbyHint();
+                        await maybeAutoStartMatchCountdown();
                     }
                     break;
                 case 'sessionInfo':
@@ -8713,29 +5231,9 @@
                         reconnectionBlockedReason = null;
                         applyNetworkPlayerNames({ hostName });
                         networkMatchState.hostReady = true;
+                        updateWebRTCActionButtons();
+                        updateLobbyHint();
                         await applyHostSessionConfig(data);
-
-                        const assignedPlayerIndex = Number.parseInt(data.assignedPlayerIndex, 10);
-                        if (Number.isFinite(assignedPlayerIndex) && assignedPlayerIndex >= 1) {
-                            setLocalNetworkPlayerIndices([assignedPlayerIndex]);
-                            const localName = normalizePlayerName(
-                                getPlayerName('player1Name', `Joueur ${assignedPlayerIndex + 1}`),
-                                `Joueur ${assignedPlayerIndex + 1}`
-                            );
-                            if (window.game?.players?.[assignedPlayerIndex]) {
-                                window.game.players[assignedPlayerIndex].name = localName;
-                                if (typeof window.game.initScoreBoard === 'function') {
-                                    window.game.initScoreBoard();
-                                }
-                                if (typeof window.game.updateUI === 'function') {
-                                    window.game.updateUI();
-                                }
-                            }
-                        } else {
-                            setLocalNetworkPlayerIndices([]);
-                            showToast('En attente d un slot joueur attribue par l hote.', 'info');
-                        }
-
                         updateConnectionStatus({
                             sessionCode: receivedCode,
                             sessionVerified: true,
@@ -8745,65 +5243,22 @@
                         if (shouldNotify) {
                             showToast(`Session ${receivedCode} verifiee.`, 'success');
                         }
-                        addLobbyActivity(`Session ${receivedCode} verifiee.`, 'info');
-                        if (data.readyGuestCount !== undefined || data.requiredGuestCount !== undefined) {
-                            applyLobbyStateFromPayload(data);
-                        }
-                        updateWebRTCActionButtons();
-                        updateLobbyHint();
-                    }
-                    break;
-                case 'lobbyQuickMessage':
-                    {
-                        const quickText = String(data.text || '').trim().slice(0, 120);
-                        const senderName = normalizePlayerName(
-                            data.senderName,
-                            (isHost ? hostPeerNames.get(targetId) : getPlayerName('player1Name', 'Hote')) || 'Joueur'
-                        );
-                        if (!quickText) break;
-
-                        addLobbyActivity(`${senderName}: ${quickText}`, 'info');
-                        if (isHost && targetId && targetId !== 'host') {
-                            await sendBluetoothData({
-                                type: 'lobbyQuickMessage',
-                                senderName,
-                                text: quickText
-                            }, { excludeTargetId: targetId });
-                        }
                     }
                     break;
                 case 'guestReady':
                     if (isHost) {
+                        networkMatchState.guestReady = true;
                         if (data.guestName) {
-                            hostPeerNames.set(targetId, normalizePlayerName(data.guestName, 'Joueur'));
+                            applyNetworkPlayerNames({ guestName: data.guestName });
                         }
-                        addLobbyActivity(`${normalizePlayerName(data.guestName, 'Joueur')} est pret.`, 'info');
-                        refreshHostPeerAssignments();
-                        await sendHostSessionInfoToPeer(targetId);
                         await sendLobbyStateToPeer();
                         updateWebRTCActionButtons();
                         updateLobbyHint();
-                    }
-                    break;
-                case 'rematchReady':
-                    if (isHost) {
-                        if (data.guestName) {
-                            hostPeerNames.set(targetId, normalizePlayerName(data.guestName, 'Joueur'));
-                        }
-                        rematchReadyPeerIds.add(targetId);
-                        refreshHostPeerAssignments();
-                        await sendHostSessionInfoToPeer(targetId);
-                        await sendLobbyStateToPeer();
-                        updateWebRTCActionButtons();
-                        updateLobbyHint();
-                        if (networkMatchState.hostReady && networkMatchState.guestReady) {
-                            showToast('Tous prets. Lancez la manche depuis le salon.', 'success');
-                        }
+                        await maybeAutoStartMatchCountdown();
                     }
                     break;
                 case 'requestLobbyState':
                     if (isHost) {
-                        await sendHostSessionInfoToPeer(targetId);
                         await sendLobbyStateToPeer();
                     }
                     break;
@@ -8834,20 +5289,7 @@
                         await sendBluetoothData({
                             type: 'sync',
                             gameState: getGameState()
-                        }, targetId ? { targetId } : undefined);
-                    }
-                    break;
-                case 'moveReject':
-                    if (!isHost) {
-                        const reason = String(data.reason || '');
-                        const fallbackMessage = getMoveRejectMessage(reason);
-                        const rejectMessage = String(data.message || '').trim() || fallbackMessage;
-                        showToast(rejectMessage, 'info', 2600);
-                        if (data.gameState) {
-                            syncGameState(data.gameState);
-                        } else {
-                            await sendBluetoothData({ type: 'requestSync' });
-                        }
+                        });
                     }
                     break;
                 case 'timeout':
@@ -8856,31 +5298,19 @@
                     }
                     break;
                 case 'ping':
-                    await sendBluetoothData({ type: 'pong', id: data.id ?? null }, targetId ? { targetId } : undefined);
+                    await sendBluetoothData({ type: 'pong', id: data.id ?? null });
                     break;
                 case 'pong':
                     {
                         const pingId = Number.parseInt(data.id, 10);
-                        const peerId = isHost ? String(targetId || '') : 'host';
-                        if (Number.isFinite(pingId)) {
-                            let trackingKey = getPingTrackingKey(peerId, pingId);
-                            let tracking = pendingPings.get(trackingKey);
-
-                            if (!tracking) {
-                                for (const [candidateKey, value] of pendingPings.entries()) {
-                                    if (Number.parseInt(value?.pingId, 10) === pingId && value?.peerId === peerId) {
-                                        trackingKey = candidateKey;
-                                        tracking = value;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (tracking && Number.isFinite(Number(tracking.sentAt))) {
-                                pendingPings.delete(trackingKey);
-                                const rttMs = Math.max(0, Math.round(performance.now() - Number(tracking.sentAt)));
-                                updatePeerLatency(peerId, rttMs);
-                            }
+                        if (Number.isFinite(pingId) && pendingPings.has(pingId)) {
+                            const sentAt = pendingPings.get(pingId);
+                            pendingPings.delete(pingId);
+                            const rttMs = Math.max(0, Math.round(performance.now() - sentAt));
+                            updateConnectionStatus({
+                                latencyMs: rttMs,
+                                latencyQuality: evaluateLatencyQuality(rttMs)
+                            });
                         }
                     }
                     break;
@@ -8904,29 +5334,16 @@
             }
         }
 
-        async function sendBluetoothData(data, options = null) {
+        async function sendBluetoothData(data) {
             if (!connectionStatus.connected) return false;
-            const targetId = options && typeof options === 'object' ? (options.targetId || null) : null;
-            const excludeTargetId = options && typeof options === 'object' ? (options.excludeTargetId || null) : null;
             let channels = [];
             if (isHost) {
-                if (targetId) {
-                    const targetPeer = bluetoothPeers.get(targetId);
-                    if (targetPeer?.dataChannel && targetPeer.dataChannel.readyState === 'open') {
-                        channels.push(targetPeer.dataChannel);
-                    }
-                } else {
-                    for (const [peerId, peer] of bluetoothPeers.entries()) {
-                        if (excludeTargetId && peerId === excludeTargetId) continue;
-                        if (peer.dataChannel && peer.dataChannel.readyState === 'open') {
-                            channels.push(peer.dataChannel);
-                        }
+                for (const peer of bluetoothPeers.values()) {
+                    if (peer.dataChannel && peer.dataChannel.readyState === 'open') {
+                        channels.push(peer.dataChannel);
                     }
                 }
             } else {
-                if (targetId && targetId !== 'host') {
-                    return false;
-                }
                 if (bluetoothConnection && bluetoothConnection.dataChannel && bluetoothConnection.dataChannel.readyState === 'open') {
                     channels.push(bluetoothConnection.dataChannel);
                 }
@@ -8984,9 +5401,7 @@
             applyLobbyStateFromPayload({
                 started: Boolean(gameState.matchStarted),
                 hostReady: gameState.matchHostReady !== undefined ? Boolean(gameState.matchHostReady) : true,
-                guestReady: gameState.matchGuestReady !== undefined ? Boolean(gameState.matchGuestReady) : true,
-                readyGuestCount: gameState.matchReadyGuestCount,
-                requiredGuestCount: gameState.matchRequiredGuestCount
+                guestReady: gameState.matchGuestReady !== undefined ? Boolean(gameState.matchGuestReady) : true
             });
 
             window.game.restoreSnapshot({
@@ -9051,8 +5466,6 @@
                 matchStarted: networkMatchState.started,
                 matchHostReady: networkMatchState.hostReady,
                 matchGuestReady: networkMatchState.guestReady,
-                matchReadyGuestCount: networkMatchState.readyGuestCount,
-                matchRequiredGuestCount: networkMatchState.requiredGuestCount,
                 sessionCode: bluetoothSession.code || connectionStatus.sessionCode || null
             };
         }
@@ -9188,7 +5601,7 @@
 
             if (modeDescription) {
                 if (isBluetoothMode) {
-                    modeDescription.dataset.baseDescription = 'Connectez 2 a 4 navigateurs via WebRTC.';
+                    modeDescription.dataset.baseDescription = 'Connectez deux navigateurs via WebRTC.';
                     setSessionCodePreview("L'hote peut partager un code pour verifier la bonne session.");
                 } else if (isAiMode) {
                     modeDescription.dataset.baseDescription = 'Affrontez une IA et reglez sa difficulte.';
@@ -9368,7 +5781,6 @@
 
         function restartGame() {
             hideConfirmModal();
-            clearAppSessionState();
             location.reload();
         }
 
@@ -9515,10 +5927,7 @@
             initializeGlobalUI();
             ensureSignalingUrlInputDefault();
             applyWebRTCParamsFromUrl();
-            refreshHostInviteTools();
-            renderLobbyActivityFeed();
             initializeSetupPreferencePersistence();
-            installAppSessionStateAutoSaveHooks();
             updateConnectionStatus({
                 connected: false,
                 connecting: false,
@@ -9534,11 +5943,6 @@
                 statusDetail: ''
             });
             updateWebRTCActionButtons();
-            const restored = restoreAppSessionStateOnLoad();
-            if (!restored) {
-                currentScreenId = detectCurrentScreenId();
-                persistAppSessionState();
-            }
             saveSetupPreferences();
         });
         function triggerConfetti(x, y, color) {
@@ -9588,7 +5992,3 @@
             setTheme(true);
         }
     
-</script>
-</body>
-
-</html>

@@ -1,0 +1,99 @@
+async function handleSignalingMessage(message) {
+            if (!bluetoothConnection || !message || typeof message !== 'object') {
+                return;
+            }
+
+            const type = String(message.type || '');
+            switch (type) {
+                case 'joined':
+                    if (message.room) {
+                        const roomCode = sanitizeSessionCode(message.room);
+                        if (roomCode) {
+                            bluetoothConnection.sessionCode = roomCode;
+                            updateConnectionStatus({
+                                sessionCode: roomCode
+                            });
+                        }
+                    }
+                    if (message.role === 'host' || message.role === 'guest') {
+                        bluetoothConnection.role = message.role;
+                    }
+                    if (Number.isFinite(message.peerCount) && message.peerCount >= 2) {
+                        bluetoothConnection.peerReady = true;
+                        updateConnectionStatus({
+                            statusDetail: 'Adversaire detecte. Negotiation WebRTC...'
+                        });
+                    } else {
+                        updateConnectionStatus({
+                            statusDetail: 'Salon cree. En attente de l adversaire...'
+                        });
+                    }
+                    break;
+                case 'peer-ready':
+                    bluetoothConnection.peerReady = true;
+                    updateConnectionStatus({
+                        statusDetail: 'Adversaire connecte. Negotiation WebRTC...'
+                    });
+                    if (isHost) {
+                        await createOfferAndSend();
+                    }
+                    break;
+                case 'peer-left':
+                    bluetoothConnection.peerReady = false;
+                    showToast('Adversaire deconnecte, reprise automatique...', 'info');
+                    if (connectionStatus.connected && !reconnectInProgress) {
+                        handleDisconnection();
+                    }
+                    break;
+                case 'signal':
+                    {
+                        const payload = message.payload || {};
+                        const signalType = String(payload.type || '');
+                        const peerConnection = setupPeerConnectionIfNeeded();
+
+                        if (signalType === 'offer' && payload.sdp) {
+                            await peerConnection.setRemoteDescription(payload.sdp);
+                            await flushPendingIceCandidates();
+                            const answer = await peerConnection.createAnswer();
+                            await peerConnection.setLocalDescription(answer);
+                            sendSignalingMessage({
+                                type: 'signal',
+                                room: bluetoothConnection.sessionCode,
+                                payload: {
+                                    type: 'answer',
+                                    sdp: peerConnection.localDescription
+                                }
+                            });
+                            updateConnectionStatus({
+                                statusDetail: 'Offre recue. Creation de la reponse...'
+                            });
+                            return;
+                        }
+
+                        if (signalType === 'answer' && payload.sdp) {
+                            await peerConnection.setRemoteDescription(payload.sdp);
+                            await flushPendingIceCandidates();
+                            updateConnectionStatus({
+                                statusDetail: 'Reponse recue. Finalisation du canal...'
+                            });
+                            return;
+                        }
+
+                        if (signalType === 'ice' && payload.candidate) {
+                            if (peerConnection.remoteDescription) {
+                                await peerConnection.addIceCandidate(payload.candidate);
+                            } else {
+                                bluetoothConnection.pendingIceCandidates.push(payload.candidate);
+                            }
+                        }
+                    }
+                    break;
+                case 'error':
+                    throw createBluetoothError(message.message || 'Erreur de signalisation.');
+                default:
+                    // Ignore unsupported signaling message.
+                    break;
+            }
+        }
+
+        
