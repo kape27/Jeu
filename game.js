@@ -2897,6 +2897,9 @@
         const HEARTBEAT_INTERVAL = 6000;
         const HEARTBEAT_TIMEOUT = 20000;
         const SIGNALING_CONNECT_TIMEOUT = 12000;
+        const SIGNALING_CONNECT_RETRIES = 3;
+        const SIGNALING_RETRY_DELAY_MS = 1400;
+        const SIGNALING_WAKEUP_TIMEOUT = 5000;
         const WEBRTC_CONNECT_TIMEOUT = 30000;
         const WEBRTC_HOST_WAIT_TIMEOUT = 180000;
         const WEBRTC_JOIN_WAIT_TIMEOUT = 60000;
@@ -2917,6 +2920,8 @@
 
         let moveHistory = [];
         let soundEnabled = true;
+        let audioUnlocked = false;
+        let audioUnlockHandlersInstalled = false;
         let heartbeatIntervalId = null;
         let heartbeatWatchdogId = null;
         let lastBluetoothActivityAt = 0;
@@ -4045,6 +4050,76 @@
             }
         }
 
+        function toSignalingHealthUrl(signalUrl) {
+            try {
+                const parsed = parseWebSocketUrl(signalUrl);
+                parsed.protocol = parsed.protocol === 'wss:' ? 'https:' : 'http:';
+                const path = String(parsed.pathname || '/');
+                parsed.pathname = /\/ws\/?$/i.test(path)
+                    ? path.replace(/\/ws\/?$/i, '/health')
+                    : '/health';
+                parsed.search = '';
+                parsed.hash = '';
+                return parsed.toString();
+            } catch (_error) {
+                return '';
+            }
+        }
+
+        async function wakeSignalingEndpoint(signalUrl) {
+            const healthUrl = toSignalingHealthUrl(signalUrl);
+            if (!healthUrl) return;
+
+            if (typeof fetch === 'function') {
+                let controller = null;
+                let timeoutId = null;
+                try {
+                    if (typeof AbortController === 'function') {
+                        controller = new AbortController();
+                        timeoutId = setTimeout(() => {
+                            try {
+                                controller.abort();
+                            } catch (_error) {
+                                // Ignore.
+                            }
+                        }, SIGNALING_WAKEUP_TIMEOUT);
+                    }
+                    await fetch(healthUrl, {
+                        method: 'GET',
+                        mode: 'no-cors',
+                        cache: 'no-store',
+                        credentials: 'omit',
+                        signal: controller ? controller.signal : undefined
+                    });
+                } catch (_error) {
+                    // Ignore wake-up failures, retry logic handles it.
+                } finally {
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                    }
+                }
+                return;
+            }
+
+            try {
+                await new Promise((resolve) => {
+                    const img = new Image();
+                    let settled = false;
+                    const done = () => {
+                        if (settled) return;
+                        settled = true;
+                        resolve();
+                    };
+                    img.onload = done;
+                    img.onerror = done;
+                    img.src = `${healthUrl}${healthUrl.includes('?') ? '&' : '?'}wake=${Date.now()}`;
+                    setTimeout(done, SIGNALING_WAKEUP_TIMEOUT);
+                });
+            } catch (_error) {
+                // Ignore.
+            }
+        }
+
         async function connectSignalingSocket(sessionCode) {
             const normalizedCode = sanitizeSessionCode(sessionCode);
             if (!normalizedCode) {
@@ -4086,8 +4161,8 @@
             };
 
             addCandidateUrl(selectedUrl);
-            addCandidateUrl(getDefaultSignalingUrl());
             addCandidateUrl('wss://jeu-points.onrender.com/ws');
+            addCandidateUrl(getDefaultSignalingUrl());
             if ((window.location?.hostname || '') === 'localhost' || (window.location?.hostname || '') === '127.0.0.1') {
                 addCandidateUrl('ws://localhost:8080/ws');
             }
@@ -4097,39 +4172,56 @@
             let lastConnectError = null;
 
             for (const candidateUrl of candidateUrls) {
-                try {
-                    connectedSocket = await new Promise((resolve, reject) => {
-                        const socket = new WebSocket(candidateUrl);
-                        let settled = false;
-                        const timeoutId = setTimeout(() => {
-                            if (settled) return;
-                            settled = true;
-                            try {
-                                socket.close();
-                            } catch (_error) {
-                                // Ignore.
-                            }
-                            reject(createBluetoothError(`Delai de connexion depasse (${candidateUrl})`));
-                        }, SIGNALING_CONNECT_TIMEOUT);
+                await wakeSignalingEndpoint(candidateUrl);
+                for (let attempt = 1; attempt <= SIGNALING_CONNECT_RETRIES; attempt += 1) {
+                    try {
+                        connectedSocket = await new Promise((resolve, reject) => {
+                            const socket = new WebSocket(candidateUrl);
+                            let settled = false;
+                            const timeoutId = setTimeout(() => {
+                                if (settled) return;
+                                settled = true;
+                                try {
+                                    socket.close();
+                                } catch (_error) {
+                                    // Ignore.
+                                }
+                                reject(createBluetoothError(`Delai de connexion depasse (${candidateUrl})`));
+                            }, SIGNALING_CONNECT_TIMEOUT);
 
-                        socket.onopen = () => {
-                            if (settled) return;
-                            settled = true;
-                            clearTimeout(timeoutId);
-                            resolve(socket);
-                        };
+                            socket.onopen = () => {
+                                if (settled) return;
+                                settled = true;
+                                clearTimeout(timeoutId);
+                                resolve(socket);
+                            };
 
-                        socket.onerror = () => {
-                            if (settled) return;
-                            settled = true;
-                            clearTimeout(timeoutId);
-                            reject(createBluetoothError(`Connexion impossible (${candidateUrl})`));
-                        };
-                    });
-                    connectedUrl = candidateUrl;
+                            socket.onerror = () => {
+                                if (settled) return;
+                                settled = true;
+                                clearTimeout(timeoutId);
+                                reject(createBluetoothError(`Connexion impossible (${candidateUrl})`));
+                            };
+
+                            socket.onclose = () => {
+                                if (settled) return;
+                                settled = true;
+                                clearTimeout(timeoutId);
+                                reject(createBluetoothError(`Connexion fermee (${candidateUrl})`));
+                            };
+                        });
+                        connectedUrl = candidateUrl;
+                        break;
+                    } catch (error) {
+                        lastConnectError = error;
+                        if (attempt < SIGNALING_CONNECT_RETRIES) {
+                            await wakeSignalingEndpoint(candidateUrl);
+                            await sleep(SIGNALING_RETRY_DELAY_MS * attempt);
+                        }
+                    }
+                }
+                if (connectedSocket) {
                     break;
-                } catch (error) {
-                    lastConnectError = error;
                 }
             }
 
@@ -5810,22 +5902,63 @@
             const soundButton = document.getElementById('soundButton');
             if (!soundButton) return;
             soundButton.textContent = soundEnabled ? 'Son: ON' : 'Son: OFF';
+            if (soundEnabled) {
+                void tryUnlockAudioContext();
+            }
             showToast(soundEnabled ? 'Son active.' : 'Son desactive.', 'info');
+        }
+
+        function getOrCreateGameAudioContext() {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return null;
+                if (!window.gameAudioContext) {
+                    window.gameAudioContext = new AudioContextClass();
+                }
+                return window.gameAudioContext;
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        async function tryUnlockAudioContext() {
+            const context = getOrCreateGameAudioContext();
+            if (!context) return false;
+            try {
+                if (context.state !== 'running') {
+                    await context.resume();
+                }
+                audioUnlocked = context.state === 'running';
+            } catch (_error) {
+                audioUnlocked = false;
+            }
+            return audioUnlocked;
+        }
+
+        function installAudioUnlockHandlers() {
+            if (audioUnlockHandlersInstalled) return;
+            audioUnlockHandlersInstalled = true;
+
+            const unlock = () => {
+                void tryUnlockAudioContext().then((unlocked) => {
+                    if (!unlocked) return;
+                    document.removeEventListener('pointerdown', unlock);
+                    document.removeEventListener('touchstart', unlock);
+                    document.removeEventListener('keydown', unlock);
+                });
+            };
+
+            document.addEventListener('pointerdown', unlock);
+            document.addEventListener('touchstart', unlock, { passive: true });
+            document.addEventListener('keydown', unlock);
         }
 
         function playSound(type) {
             if (!soundEnabled) return;
+            if (!audioUnlocked) return;
             try {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContextClass) return;
-                if (!window.gameAudioContext) {
-                    window.gameAudioContext = new AudioContextClass();
-                }
-
-                const context = window.gameAudioContext;
-                if (context.state === 'suspended') {
-                    context.resume();
-                }
+                const context = getOrCreateGameAudioContext();
+                if (!context || context.state !== 'running') return;
 
                 const now = context.currentTime;
                 const oscillator = context.createOscillator();
@@ -5907,6 +6040,7 @@
         }
 
         function initializeGlobalUI() {
+            installAudioUnlockHandlers();
             const soundButton = document.getElementById('soundButton');
             if (soundButton) {
                 soundButton.textContent = soundEnabled ? 'Son: ON' : 'Son: OFF';
