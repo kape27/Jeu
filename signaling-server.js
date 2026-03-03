@@ -236,6 +236,36 @@ function getRoomsStats() {
     return { rooms: rooms.size, clients };
 }
 
+function createUnavailableCompetitionApi(error) {
+    const reason = String(error?.message || error || 'Competition API disabled').trim();
+    return {
+        disabledReason: reason || 'Competition API disabled',
+        getDbPath: () => 'unavailable',
+        onTick: () => {},
+        handleHttp: async (req, res) => {
+            let pathname = '';
+            try {
+                pathname = new URL(String(req?.url || '/'), 'http://localhost').pathname;
+            } catch (_error) {
+                pathname = String(req?.url || '');
+            }
+            if (!pathname.startsWith('/api/')) {
+                return false;
+            }
+            res.writeHead(503, {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Cache-Control': 'no-store'
+            });
+            res.end(JSON.stringify({
+                ok: false,
+                error: 'API competition indisponible.',
+                reason
+            }));
+            return true;
+        }
+    };
+}
+
 function send(ws, payload) {
     if (!isSocketOpen(ws)) return;
     ws.send(JSON.stringify(payload));
@@ -515,17 +545,23 @@ function handleClientMessage(ws, rawMessage) {
     send(ws, { type: 'error', message: 'Type de message non supporte.' });
 }
 
-const competitionApi = createCompetitionApi({
-    isOriginAllowed,
-    getRoomsStats,
-    maxPlayers: MAX_PLAYERS,
-    dbPath: DB_PATH,
-    supabaseUrl: SUPABASE_URL,
-    supabaseServiceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
-    authRateLimitMax: RATE_LIMIT_MAX_AUTH,
-    sessionTtlMs: SESSION_TTL_MS,
-    rateWindowMs: RATE_LIMIT_WINDOW_MS
-});
+let competitionApi;
+try {
+    competitionApi = createCompetitionApi({
+        isOriginAllowed,
+        getRoomsStats,
+        maxPlayers: MAX_PLAYERS,
+        dbPath: DB_PATH,
+        supabaseUrl: SUPABASE_URL,
+        supabaseServiceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+        authRateLimitMax: RATE_LIMIT_MAX_AUTH,
+        sessionTtlMs: SESSION_TTL_MS,
+        rateWindowMs: RATE_LIMIT_WINDOW_MS
+    });
+} catch (error) {
+    console.error(`Competition API disabled: ${error?.message || error}`);
+    competitionApi = createUnavailableCompetitionApi(error);
+}
 
 const server = http.createServer((req, res) => {
     competitionApi.handleHttp(req, res).then((handled) => {
@@ -603,5 +639,8 @@ wss.on('close', () => {
 server.listen(PORT, HOST, () => {
     console.log(`Signaling WS server listening on ws://${HOST}:${PORT}${WS_PATH}`);
     console.log(`Competition API: /api/auth/*, /api/events* (db=${competitionApi.getDbPath()})`);
+    if (competitionApi.disabledReason) {
+        console.log(`Competition API status: disabled (${competitionApi.disabledReason})`);
+    }
     console.log(`Security: maxPayload=${MAX_WS_PAYLOAD_BYTES}B, rate=${RATE_LIMIT_MAX_MESSAGES}/min, joinRate=${RATE_LIMIT_MAX_JOINS}/min, authRate=${RATE_LIMIT_MAX_AUTH}/min, origins=${ALLOWED_ORIGINS.join(', ')}, allowEmptyOrigin=${ALLOW_EMPTY_ORIGIN}`);
 });
