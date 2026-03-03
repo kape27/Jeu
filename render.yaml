@@ -11,3 +11,15 @@ services:
         value: 10000
       - key: WS_PATH
         value: /ws
+      - key: ALLOWED_ORIGINS
+        value: "https://*.netlify.app,https://*.onrender.com,https://*.github.io,capacitor://localhost,http://localhost,https://localhost"
+      - key: ALLOW_EMPTY_ORIGIN
+        value: "false"
+      - key: MAX_WS_PAYLOAD_BYTES
+        value: "16384"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "60000"
+      - key: RATE_LIMIT_MAX_MESSAGES
+        value: "180"
+      - key: RATE_LIMIT_MAX_JOINS
+        value: "30"

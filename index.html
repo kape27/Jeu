@@ -8,38 +8,13 @@
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0f14'/%3E%3Ccircle cx='20' cy='20' r='6' fill='%23137fec'/%3E%3Ccircle cx='44' cy='20' r='6' fill='%23e2e8f0'/%3E%3Ccircle cx='20' cy='44' r='6' fill='%23e2e8f0'/%3E%3Ccircle cx='44' cy='44' r='6' fill='%23137fec'/%3E%3C/svg%3E" />
 
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" href="./assets/tailwind.generated.css" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
         rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet" />
 
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#137fec",
-                        "background-light": "#f6f7f8",
-                        "background-dark": "#0a0f14",
-                    },
-                    fontFamily: {
-                        "display": ["Space Grotesk", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "1rem",
-                        "2xl": "1.5rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
-
-    <style type="text/tailwindcss">
+    <style type="text/css">
         @layer utilities {
             .grid-bg {
                 background-image: radial-gradient(circle, rgba(19, 127, 236, 0.2) 1px, transparent 1px);
@@ -269,6 +244,7 @@
 
         #uiToggleGravity.locked,
         #uiToggleNexus.locked,
+        #uiToggleStorm.locked,
         #uiToggleObstacles.locked {
             opacity: 0.55;
             pointer-events: none;
@@ -727,6 +703,7 @@
             </select>
             <input type="hidden" id="gravityShift" value="off">
             <input type="hidden" id="hyperNexus" value="off">
+            <input type="hidden" id="stormMode" value="off">
             <input type="hidden" id="obstacleMode" value="off">
             <input type="hidden" id="obstacleDensity" value="medium">
             <!-- Player config inputs -->
@@ -1054,6 +1031,29 @@
                             </div>
                         </div>
 
+                        <!-- Tempete -->
+                        <div id="uiToggleStorm" onclick="toggleAdvancedMode('stormMode', 'uiToggleStorm')"
+                            class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700/50 transition-colors cursor-pointer active:scale-[0.98]">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="size-11 rounded-xl bg-sky-500/10 flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined text-sky-500 text-[24px]">thunderstorm</span>
+                                </div>
+                                <div>
+                                    <p class="text-slate-900 dark:text-slate-100 font-bold text-[14px] mb-0.5">Tempete
+                                    </p>
+                                    <p class="text-slate-500 dark:text-slate-400 text-[11px] leading-tight">Evenement
+                                        Tempete tous les 6 coups</p>
+                                </div>
+                            </div>
+                            <div
+                                class="w-12 h-7 bg-slate-200 dark:bg-slate-700 rounded-full relative p-1 flex items-center transition-colors duration-300 toggle-track">
+                                <div
+                                    class="size-5 bg-white rounded-full shadow-md transition-transform duration-300 toggle-knob">
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Obstacles -->
                         <div id="uiToggleObstacles" onclick="toggleAdvancedMode('obstacleMode', 'uiToggleObstacles')"
                             class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700/50 transition-colors cursor-pointer active:scale-[0.98]">
@@ -1258,16 +1258,6 @@
                             Copier lien
                         </button>
                     </div>
-                    <div class="mt-2 grid grid-cols-2 gap-2">
-                        <button onclick="sendLobbyQuickMessage('ready')"
-                            class="py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
-                            Message: pret
-                        </button>
-                        <button onclick="sendLobbyQuickMessage('wait')"
-                            class="py-2.5 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
-                            Message: attente
-                        </button>
-                    </div>
                 </section>
 
                 <div id="lobbyStatusPanel"
@@ -1314,6 +1304,39 @@
                         </button>
                     </div>
                 </div>
+
+                <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/40 p-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-[10px] font-black tracking-[0.12em] uppercase text-primary">Mini Chat</p>
+                        <button onclick="clearLobbyChatMessages()"
+                            class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all">
+                            Effacer
+                        </button>
+                    </div>
+                    <div id="lobbyChatMessages"
+                        class="mt-3 max-h-44 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-900/60 p-2.5 space-y-2">
+                    </div>
+                    <div class="mt-3 flex items-center gap-2">
+                        <input id="lobbyChatInput" type="text" maxlength="140"
+                            placeholder="Ecrire un message..."
+                            onkeydown="handleSalonChatInputKeydown(event)"
+                            class="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-950/60 px-3 py-2.5 text-[12px] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/60 disabled:opacity-50">
+                        <button id="btnSendLobbyChat" onclick="sendLobbyChatFromInput()"
+                            class="px-3.5 py-2.5 rounded-xl bg-primary text-white text-[11px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
+                            Envoyer
+                        </button>
+                    </div>
+                    <div class="mt-2 grid grid-cols-2 gap-2">
+                        <button onclick="sendLobbyQuickMessage('ready')"
+                            class="py-2 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
+                            Message: pret
+                        </button>
+                        <button onclick="sendLobbyQuickMessage('wait')"
+                            class="py-2 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider active:scale-[0.98] transition-all disabled:opacity-40">
+                            Message: attente
+                        </button>
+                    </div>
+                </section>
 
                 <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/40 p-4">
                     <div class="flex items-center justify-between gap-2">
@@ -1419,6 +1442,20 @@
 
                 <div id="gravitySpacer" class="h-8 w-px bg-slate-700/50 mx-2 hidden"></div>
 
+                <!-- Storm Info -->
+                <div id="stormPanel" class="flex items-center gap-3 hidden">
+                    <div class="w-8 h-8 rounded-full bg-sky-500/20 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-sky-400 text-[18px]">thunderstorm</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-1">Tempete</p>
+                        <p class="text-xs font-bold text-white">Prochain: <span id="stormMovesLeft" class="text-sky-300">6</span> coups</p>
+                        <p id="stormLastEvent" class="text-[9px] text-slate-400 font-semibold leading-none mt-0.5">Dernier: --</p>
+                    </div>
+                </div>
+
+                <div id="stormSpacer" class="h-8 w-px bg-slate-700/50 mx-2 hidden"></div>
+
                 <!-- Progress / Obstacles Info -->
                 <div class="flex items-center gap-3 ml-auto">
                     <div class="flex flex-col text-right">
@@ -1511,7 +1548,7 @@
                 <div class="flex gap-3">
                     <button onclick="hideConfirmModal()"
                         class="flex-1 bg-slate-100 dark:bg-slate-700 dark:text-white text-slate-700 font-bold py-3.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Annuler</button>
-                    <button onclick="restartGame()"
+                    <button onclick="quitCurrentMatch()"
                         class="flex-1 bg-red-500 text-white font-bold py-3.5 rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">Quitter</button>
                 </div>
             </div>
@@ -1839,6 +1876,7 @@
                 }
             }
 
+            updateGamePaceUI();
             saveSetupPreferences();
             if (soundEnabled) playSound('click');
         }
@@ -2438,6 +2476,7 @@
                 blitzTurnSeconds,
                 gravityEnabled,
                 hyperNexusEnabled: document.getElementById('hyperNexus')?.value === 'on',
+                stormEnabled: document.getElementById('stormMode')?.value === 'on',
                 obstacleEnabled: document.getElementById('obstacleMode')?.value === 'on',
                 obstacleDensity: normalizeObstacleDensity(document.getElementById('obstacleDensity')?.value)
             };
@@ -2494,6 +2533,7 @@
                 aiDifficulty: document.getElementById('aiDifficulty')?.value ?? 'hard',
                 gravityShift: document.getElementById('gravityShift')?.value ?? 'off',
                 hyperNexus: document.getElementById('hyperNexus')?.value ?? 'off',
+                stormMode: document.getElementById('stormMode')?.value ?? 'off',
                 obstacleMode: document.getElementById('obstacleMode')?.value ?? 'off',
                 obstacleDensity: normalizeObstacleDensity(document.getElementById('obstacleDensity')?.value),
                 signalingUrl: String(document.getElementById('signalingUrlInput')?.value || '').trim(),
@@ -2563,6 +2603,12 @@
                 if (nexusInput) nexusInput.value = hyperNexus;
                 const nexusCard = document.getElementById('uiToggleNexus') || document.getElementById('cardNexus');
                 setAdvancedToggleState(nexusCard, hyperNexus === 'on');
+
+                const stormMode = prefs.stormMode === 'on' ? 'on' : 'off';
+                const stormInput = document.getElementById('stormMode');
+                if (stormInput) stormInput.value = stormMode;
+                const stormCard = document.getElementById('uiToggleStorm') || document.getElementById('cardStorm');
+                setAdvancedToggleState(stormCard, stormMode === 'on');
 
                 const obstacleMode = prefs.obstacleMode === 'on' ? 'on' : 'off';
                 const obstacleInput = document.getElementById('obstacleMode');
@@ -2775,6 +2821,7 @@
                     : 10,
                 gravityEnabled: Boolean(snapshot.gravityEnabled),
                 hyperNexusEnabled: Boolean(snapshot.hyperNexusEnabled),
+                stormEnabled: Boolean(snapshot.stormEnabled),
                 obstacleEnabled: Boolean(snapshot.obstacleEnabled),
                 obstacleDensity: normalizeObstacleDensity(snapshot.obstacleDensity)
             };
@@ -2950,6 +2997,7 @@
             const blitzTurnInput = document.getElementById('blitzTurnTime');
             const gravityCard = document.getElementById('uiToggleGravity') || document.getElementById('cardGravity');
             const nexusCard = document.getElementById('uiToggleNexus') || document.getElementById('cardNexus');
+            const stormCard = document.getElementById('uiToggleStorm') || document.getElementById('cardStorm');
             const obstaclesCard = document.getElementById('uiToggleObstacles') || document.getElementById('cardObstacles');
             const densityOptions = document.querySelectorAll('.density-option');
             const gridButtons = [6, 8, 10, 12]
@@ -2968,6 +3016,7 @@
             if (blitzTurnInput) blitzTurnInput.disabled = locked;
             if (gravityCard) gravityCard.classList.toggle('locked', locked);
             if (nexusCard) nexusCard.classList.toggle('locked', locked);
+            if (stormCard) stormCard.classList.toggle('locked', locked);
             if (obstaclesCard) obstaclesCard.classList.toggle('locked', locked);
             densityOptions.forEach((option) => {
                 option.disabled = locked;
@@ -2996,6 +3045,7 @@
                 blitzTurnSeconds: normalizeBlitzTurnSeconds(options.blitzTurnSeconds ?? 10),
                 gravityEnabled: Boolean(options.gravityEnabled),
                 hyperNexusEnabled: Boolean(options.hyperNexusEnabled),
+                stormEnabled: Boolean(options.stormEnabled),
                 obstacleEnabled: Boolean(options.obstacleEnabled),
                 obstacleDensity: normalizeObstacleDensity(options.obstacleDensity)
             };
@@ -3038,11 +3088,13 @@
             const blitzTurnInput = document.getElementById('blitzTurnTime');
             const gravityInput = document.getElementById('gravityShift');
             const nexusInput = document.getElementById('hyperNexus');
+            const stormInput = document.getElementById('stormMode');
             const obstacleInput = document.getElementById('obstacleMode');
             const obstacleDensityInput = document.getElementById('obstacleDensity');
             const densitySelector = document.getElementById('obstacleDensitySelector');
             const gravityCard = document.getElementById('uiToggleGravity') || document.getElementById('cardGravity');
             const nexusCard = document.getElementById('uiToggleNexus') || document.getElementById('cardNexus');
+            const stormCard = document.getElementById('uiToggleStorm') || document.getElementById('cardStorm');
             const obstaclesCard = document.getElementById('uiToggleObstacles') || document.getElementById('cardObstacles');
 
             if (gridSizeInput) {
@@ -3064,6 +3116,9 @@
             if (nexusInput) {
                 nexusInput.value = options.hyperNexusEnabled ? 'on' : 'off';
             }
+            if (stormInput) {
+                stormInput.value = options.stormEnabled ? 'on' : 'off';
+            }
             if (obstacleInput) {
                 obstacleInput.value = options.obstacleEnabled ? 'on' : 'off';
             }
@@ -3076,6 +3131,7 @@
             selectObstacleDensity(options.obstacleDensity, true);
             setAdvancedToggleState(gravityCard, options.gravityEnabled);
             setAdvancedToggleState(nexusCard, options.hyperNexusEnabled);
+            setAdvancedToggleState(stormCard, options.stormEnabled);
             setAdvancedToggleState(obstaclesCard, options.obstacleEnabled);
             onlinePlayerNames.forEach((name, idx) => {
                 const nameInput = document.getElementById(`player${idx + 1}Name`);
@@ -3124,6 +3180,7 @@
                 blitzTurnSeconds: normalizeBlitzTurnSeconds(window.game.turnDurationMs ? window.game.turnDurationMs / 1000 : 10),
                 gravityEnabled: Boolean(window.game.gravityEnabled),
                 hyperNexusEnabled: Boolean(window.game.hyperNexusEnabled),
+                stormEnabled: Boolean(window.game.stormEnabled),
                 obstacleEnabled: Boolean(window.game.obstacleEnabled),
                 obstacleDensity: normalizeObstacleDensity(window.game.obstacleDensity)
             };
@@ -3137,6 +3194,7 @@
                 currentOptions.blitzTurnSeconds !== hostConfig.gameOptions.blitzTurnSeconds ||
                 currentOptions.gravityEnabled !== hostConfig.gameOptions.gravityEnabled ||
                 currentOptions.hyperNexusEnabled !== hostConfig.gameOptions.hyperNexusEnabled ||
+                currentOptions.stormEnabled !== hostConfig.gameOptions.stormEnabled ||
                 currentOptions.obstacleEnabled !== hostConfig.gameOptions.obstacleEnabled ||
                 currentOptions.obstacleDensity !== hostConfig.gameOptions.obstacleDensity ||
                 currentPlayersCount !== hostConfig.onlinePlayersCount ||
@@ -3187,6 +3245,15 @@
                 this.hyperNexusEnabled = Boolean(options.hyperNexusEnabled);
                 this.isNexusChain = false;
 
+                // Storm mode properties
+                this.stormEnabled = Boolean(options.stormEnabled);
+                this.stormBaseInterval = 6;
+                this.stormMinInterval = 4;
+                this.stormMoveInterval = this.stormBaseInterval;
+                this.stormEventsTriggered = 0;
+                this.stormLastEventType = null;
+                this.stormNextTriggerAtPoints = this.stormMoveInterval;
+
                 // Obstacles mode properties
                 this.obstacleEnabled = Boolean(options.obstacleEnabled);
                 this.obstacleDensity = normalizeObstacleDensity(options.obstacleDensity);
@@ -3220,6 +3287,13 @@
                 this.gameOver = false;
                 this.endReason = 'board';
                 this.timedOutPlayerIndex = null;
+                this.currentPlayerIndex = 0;
+                this.points = new Map();
+                this.boxes = new Map();
+                this.players.forEach((player) => {
+                    player.score = 0;
+                    player.boxCounter = 0;
+                });
                 moveHistory = [];
                 this.stopTurnTimer();
                 this.isGravityAnimating = false;
@@ -3227,6 +3301,10 @@
                     clearTimeout(this.gravityFinalizeTimeoutId);
                     this.gravityFinalizeTimeoutId = null;
                 }
+                this.stormEventsTriggered = 0;
+                this.stormLastEventType = null;
+                this.stormMoveInterval = this.stormBaseInterval;
+                this.stormNextTriggerAtPoints = this.stormMoveInterval;
 
                 const undoButton = document.getElementById('undoButton');
                 if (undoButton) {
@@ -3254,20 +3332,24 @@
                     const scoreCard = document.createElement('div');
                     scoreCard.id = `player${index}Score`;
                     scoreCard.className = 'rounded-lg border px-2 py-1.5 bg-slate-900/45 border-slate-700/55 transition-all';
+                    const playerName = escapeHtml(normalizePlayerName(player?.name, `Joueur ${index + 1}`));
+                    const playerColor = sanitizeHexColor(player?.color, getPlayerColor(`player${Math.min(index + 1, 4)}Color`, '#328DCB'));
+                    const safeBoxes = Math.max(0, Number.parseInt(player?.boxCounter, 10) || 0);
+                    const safeScore = Math.max(0, Number.parseInt(player?.score, 10) || 0);
                     scoreCard.innerHTML = `
                 <div class="flex items-center justify-between gap-1.5">
                     <div class="flex items-center gap-1.5 min-w-0">
-                        <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${player.color}"></span>
-                        <span class="text-[10px] font-bold text-slate-100 truncate">${player.name}</span>
+                        <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${playerColor}"></span>
+                        <span class="text-[10px] font-bold text-slate-100 truncate">${playerName}</span>
                     </div>
                     <span class="text-[8px] uppercase tracking-wider text-slate-400 shrink-0">J${index + 1}</span>
                 </div>
                 <div class="mt-0.5 flex items-end justify-between gap-2 leading-none">
                     <div class="flex items-end gap-1">
-                        <span id="boxes${index}" class="text-xl leading-none font-black text-white">${player.boxCounter ?? 0}</span>
+                        <span id="boxes${index}" class="text-xl leading-none font-black text-white">${safeBoxes}</span>
                         <span class="text-[9px] font-bold uppercase tracking-wider text-slate-300">carres</span>
                     </div>
-                    <div class="text-[9px] text-slate-400 whitespace-nowrap">Pts: <span id="score${index}" class="font-bold text-slate-200">${player.score}</span></div>
+                    <div class="text-[9px] text-slate-400 whitespace-nowrap">Pts: <span id="score${index}" class="font-bold text-slate-200">${safeScore}</span></div>
                 </div>
             `;
                     scoreBoard.appendChild(scoreCard);
@@ -3713,6 +3795,11 @@
                     movesUntilShiftCount: this.movesUntilShiftCount,
                     initialMovesUntilShift: this.initialMovesUntilShift,
                     hyperNexusEnabled: this.hyperNexusEnabled,
+                    stormEnabled: this.stormEnabled,
+                    stormMoveInterval: this.stormMoveInterval,
+                    stormEventsTriggered: this.stormEventsTriggered,
+                    stormLastEventType: this.stormLastEventType,
+                    stormNextTriggerAtPoints: this.stormNextTriggerAtPoints,
                     obstacleEnabled: this.obstacleEnabled,
                     obstacleDensity: normalizeObstacleDensity(this.obstacleDensity),
                     obstacles: Array.from(this.obstacles),
@@ -3763,6 +3850,36 @@
                 }
                 if (snapshot.hyperNexusEnabled !== undefined) {
                     this.hyperNexusEnabled = Boolean(snapshot.hyperNexusEnabled);
+                }
+                if (snapshot.stormEnabled !== undefined) {
+                    this.stormEnabled = Boolean(snapshot.stormEnabled);
+                }
+                if (snapshot.stormMoveInterval !== undefined) {
+                    const restoredInterval = Number.parseInt(snapshot.stormMoveInterval, 10);
+                    this.stormMoveInterval = Number.isFinite(restoredInterval) && restoredInterval >= this.stormMinInterval
+                        ? restoredInterval
+                        : this.stormBaseInterval;
+                } else {
+                    this.stormMoveInterval = this.stormBaseInterval;
+                }
+                if (snapshot.stormEventsTriggered !== undefined) {
+                    const restoredEvents = Number.parseInt(snapshot.stormEventsTriggered, 10);
+                    this.stormEventsTriggered = Number.isFinite(restoredEvents) && restoredEvents >= 0
+                        ? restoredEvents
+                        : 0;
+                } else {
+                    this.stormEventsTriggered = 0;
+                }
+                this.stormLastEventType = snapshot.stormLastEventType
+                    ? String(snapshot.stormLastEventType)
+                    : null;
+                if (snapshot.stormNextTriggerAtPoints !== undefined) {
+                    const restoredNextTrigger = Number.parseInt(snapshot.stormNextTriggerAtPoints, 10);
+                    this.stormNextTriggerAtPoints = Number.isFinite(restoredNextTrigger) && restoredNextTrigger >= 1
+                        ? restoredNextTrigger
+                        : this.stormMoveInterval;
+                } else {
+                    this.recomputeStormCadenceFromHistory();
                 }
                 if (snapshot.obstacleEnabled !== undefined) {
                     this.obstacleEnabled = Boolean(snapshot.obstacleEnabled);
@@ -3966,12 +4083,16 @@
                         gravityTriggered = this.applyGravityShift(actingPlayerIndex);
                     }
                 }
+
+                if (!gravityTriggered) {
+                    this.applyStormEventIfNeeded(actingPlayerIndex, source);
+                }
                 this.updateUI();
                 if (!gravityTriggered) {
                     this.checkGameEnd();
                 }
 
-                if (this.withAI && source !== 'ai' && !isNexus && !gravityTriggered) {
+                if (this.withAI && !isNexus && !gravityTriggered && !this.gameOver && this.currentPlayerIndex === 1) {
                     await this.handleAITurn();
                 }
             }
@@ -4453,6 +4574,111 @@
                 return { minX, maxX, minY, maxY };
             }
 
+            getStormIntervalForEvent(eventNumber) {
+                const normalizedEvent = Math.max(1, Number.parseInt(eventNumber, 10) || 1);
+                if (normalizedEvent >= 6) return this.stormMinInterval;
+                if (normalizedEvent >= 3) return Math.max(this.stormMinInterval, this.stormBaseInterval - 1);
+                return this.stormBaseInterval;
+            }
+
+            recomputeStormCadenceFromHistory() {
+                let nextTrigger = 0;
+                for (let eventNumber = 1; eventNumber <= this.stormEventsTriggered + 1; eventNumber += 1) {
+                    nextTrigger += this.getStormIntervalForEvent(eventNumber);
+                }
+                this.stormMoveInterval = this.getStormIntervalForEvent(this.stormEventsTriggered + 1);
+                this.stormNextTriggerAtPoints = Math.max(1, nextTrigger);
+            }
+
+            getStormMovesRemaining() {
+                if (!this.stormEnabled) return 0;
+                const remaining = Number.parseInt(this.stormNextTriggerAtPoints, 10) - this.points.size;
+                return Math.max(0, Number.isFinite(remaining) ? remaining : this.stormMoveInterval);
+            }
+
+            getStormEventLabel(eventType) {
+                const normalized = String(eventType || '').trim().toLowerCase();
+                if (normalized === 'skip') return 'Tour saute';
+                if (normalized === 'extra') return 'Tour bonus';
+                if (normalized === 'haste') return 'Chrono reduit';
+                return 'Aucun';
+            }
+
+            triggerStormVisual() {
+                const grid = document.getElementById('grid');
+                if (!grid) return;
+                grid.classList.add('gravity-shake');
+                setTimeout(() => {
+                    if (window.game !== this) return;
+                    grid.classList.remove('gravity-shake');
+                }, 480);
+            }
+
+            pickStormEventType(eventNumber, actingPlayerIndex) {
+                const sequence = ['skip', 'extra', 'haste'];
+                const seed = (
+                    (this.points.size * 17) +
+                    (eventNumber * 11) +
+                    (this.size * 7) +
+                    (this.players.length * 5) +
+                    ((actingPlayerIndex + 1) * 3)
+                ) % sequence.length;
+                let selected = sequence[seed];
+                if (this.stormLastEventType && selected === this.stormLastEventType) {
+                    selected = sequence[(seed + ((eventNumber % 2) + 1)) % sequence.length];
+                }
+                return selected;
+            }
+
+            applyStormEventIfNeeded(actingPlayerIndex, source = 'local') {
+                if (!this.stormEnabled) return false;
+                if (this.gameOver || this.isGravityAnimating) return false;
+                if (source === 'nexus') return false;
+                if (!Number.isFinite(this.stormMoveInterval) || this.stormMoveInterval < this.stormMinInterval) {
+                    this.recomputeStormCadenceFromHistory();
+                }
+                if (!Number.isFinite(this.stormNextTriggerAtPoints) || this.stormNextTriggerAtPoints <= 0) {
+                    this.recomputeStormCadenceFromHistory();
+                }
+                if (this.points.size < this.stormNextTriggerAtPoints) return false;
+
+                const eventNumber = this.stormEventsTriggered + 1;
+                const eventType = this.pickStormEventType(eventNumber, actingPlayerIndex);
+                this.stormEventsTriggered = eventNumber;
+                this.stormLastEventType = eventType;
+                this.stormMoveInterval = this.getStormIntervalForEvent(eventNumber + 1);
+                this.stormNextTriggerAtPoints += this.stormMoveInterval;
+                this.triggerStormVisual();
+
+                if (eventType === 'skip') {
+                    const skippedPlayer = this.players[this.currentPlayerIndex];
+                    this.nextTurn();
+                    showToast(`Tempete (${eventNumber}): ${skippedPlayer?.name || 'Joueur'} saute son tour.`, 'info', 2200);
+                    if (soundEnabled) playSound('warning');
+                    return true;
+                }
+
+                if (eventType === 'extra') {
+                    const bonusPlayer = this.players[actingPlayerIndex] || this.players[this.currentPlayerIndex];
+                    this.currentPlayerIndex = actingPlayerIndex;
+                    this.startTurnTimer(true);
+                    this.refreshGravityIndicator();
+                    showToast(`Tempete (${eventNumber}): ${bonusPlayer?.name || 'Joueur'} rejoue immediatement.`, 'success', 2200);
+                    if (soundEnabled) playSound('complete');
+                    return true;
+                }
+
+                const slowDownMs = Math.min(2000, Math.max(900, Math.round((this.turnDurationMs || 9000) * 0.2)));
+                if (this.blitzEnabled && Number.isFinite(this.turnDeadlineTs)) {
+                    this.turnDeadlineTs = Math.max(Date.now() + 350, this.turnDeadlineTs - slowDownMs);
+                    showToast(`Tempete (${eventNumber}): chrono -${(slowDownMs / 1000).toFixed(1)}s.`, 'warning', 2200);
+                } else {
+                    showToast(`Tempete (${eventNumber}): rafale detectee.`, 'info', 2200);
+                }
+                if (soundEnabled) playSound('warning');
+                return true;
+            }
+
             updateUI() {
                 const currentPlayer = this.players[this.currentPlayerIndex];
 
@@ -4521,6 +4747,12 @@
                 const progressFill = document.getElementById('progressFill');
                 const progressCount = document.getElementById('progressCount');
                 const progressBar = document.getElementById('progressBar');
+                const stormPanel = document.getElementById('stormPanel');
+                const stormMovesLeft = document.getElementById('stormMovesLeft');
+                const stormLastEvent = document.getElementById('stormLastEvent');
+                const stormSpacer = document.getElementById('stormSpacer');
+                const gravityPanel = document.getElementById('gravityPanel');
+                const gravitySpacer = document.getElementById('gravitySpacer');
                 const gameHint = document.getElementById('gameHint');
                 const totalPossiblePoints = this.getTotalPlayablePoints();
                 const completion = totalPossiblePoints > 0
@@ -4589,25 +4821,54 @@
                     progressBar.style.height = `${completion}%`;
                 }
 
+                if (stormPanel) {
+                    stormPanel.style.display = this.stormEnabled ? 'flex' : 'none';
+                }
+                if (stormMovesLeft) {
+                    const remainingMoves = this.getStormMovesRemaining();
+                    stormMovesLeft.textContent = String(remainingMoves);
+                    stormMovesLeft.classList.toggle('text-amber-300', this.stormEnabled && remainingMoves <= 1);
+                    stormMovesLeft.classList.toggle('text-sky-300', !this.stormEnabled || remainingMoves > 1);
+                }
+                if (stormLastEvent) {
+                    const lastLabel = this.getStormEventLabel(this.stormLastEventType);
+                    stormLastEvent.textContent = this.stormEnabled
+                        ? `Dernier: ${lastLabel}`
+                        : 'Dernier: --';
+                }
+
+                if (gravitySpacer) {
+                    gravitySpacer.style.display = this.gravityEnabled ? 'block' : 'none';
+                }
+                if (stormSpacer) {
+                    stormSpacer.style.display = this.stormEnabled ? 'block' : 'none';
+                }
+                if (gravityPanel && !this.gravityEnabled && this.stormEnabled && gravitySpacer) {
+                    gravitySpacer.style.display = 'none';
+                }
+
                 if (gameHint) {
+                    const stormHintSuffix = this.stormEnabled
+                        ? ` Tempete: prochain evenement dans ${this.getStormMovesRemaining()} coup${this.getStormMovesRemaining() > 1 ? 's' : ''}.`
+                        : '';
                     if (bluetoothConnection) {
                         const sessionLabel = connectionStatus.sessionCode || '--';
                         const latencyLabel = formatLatencyForDisplay(connectionStatus.latencyMs);
                         if (connectionStatus.connected) {
                             if (!networkMatchState.started) {
                                 if (isMatchCountdownRunning()) {
-                                    gameHint.textContent = `Session ${sessionLabel} | ${latencyLabel} | Demarrage dans ${getMatchCountdownRemainingSeconds()}s.`;
+                                    gameHint.textContent = `Session ${sessionLabel} | ${latencyLabel} | Demarrage dans ${getMatchCountdownRemainingSeconds()}s.${stormHintSuffix}`;
                                 } else {
                                     gameHint.textContent = isHost
                                         ? (networkMatchState.guestReady
-                                            ? `Session ${sessionLabel} | ${latencyLabel} | Pret a lancer la manche.`
-                                            : `Session ${sessionLabel} | ${latencyLabel} | En attente des joueurs invites.`)
-                                        : `Session ${sessionLabel} | ${latencyLabel} | En attente du lancement de l hote.`;
+                                            ? `Session ${sessionLabel} | ${latencyLabel} | Pret a lancer la manche.${stormHintSuffix}`
+                                            : `Session ${sessionLabel} | ${latencyLabel} | En attente des joueurs invites.${stormHintSuffix}`)
+                                        : `Session ${sessionLabel} | ${latencyLabel} | En attente du lancement de l hote.${stormHintSuffix}`;
                                 }
                             } else {
                                 gameHint.textContent = this.blitzEnabled
-                                    ? `Session ${sessionLabel} | ${latencyLabel} | Blitz ${Math.round(this.turnDurationMs / 1000)}s par tour.`
-                                    : `Session ${sessionLabel} | ${latencyLabel} | Coups synchronises automatiquement.`;
+                                    ? `Session ${sessionLabel} | ${latencyLabel} | Blitz ${Math.round(this.turnDurationMs / 1000)}s par tour${this.stormEnabled ? ` | Tempete dans ${this.getStormMovesRemaining()} coup${this.getStormMovesRemaining() > 1 ? 's' : ''}` : ''}.`
+                                    : `Session ${sessionLabel} | ${latencyLabel} | Coups synchronises automatiquement${this.stormEnabled ? ` | Tempete dans ${this.getStormMovesRemaining()} coup${this.getStormMovesRemaining() > 1 ? 's' : ''}` : ''}.`;
                             }
                         } else if (connectionStatus.reconnecting) {
                             const attempt = Math.max(1, connectionStatus.reconnectAttempt || 1);
@@ -4618,9 +4879,9 @@
                             gameHint.textContent = 'WebRTC indisponible. Reprise automatique en attente.';
                         }
                     } else if (this.blitzEnabled) {
-                        gameHint.textContent = `Mode Blitz actif: ${Math.round(this.turnDurationMs / 1000)}s par tour.`;
+                        gameHint.textContent = `Mode Blitz actif: ${Math.round(this.turnDurationMs / 1000)}s par tour.${stormHintSuffix}`;
                     } else {
-                        gameHint.textContent = 'Astuce: completez des carres pour accelerer votre score.';
+                        gameHint.textContent = `Astuce: completez des carres pour accelerer votre score.${stormHintSuffix}`;
                     }
                 }
 
@@ -4682,19 +4943,23 @@
                 const winnerShadow = leaders.length > 1
                     ? 'rgba(16, 185, 129, 0.3)'
                     : `${winner.color}4D`;
+                const safeWinnerMessage = escapeHtml(winnerMessage);
 
                 const gameOverScreen = document.createElement('div');
                 gameOverScreen.className = 'game-over-screen';
 
                 let scoresHtml = '';
                 sortedPlayers.forEach((player, idx) => {
+                    const safePlayerName = escapeHtml(normalizePlayerName(player?.name, `Joueur ${idx + 1}`));
+                    const safePlayerColor = sanitizeHexColor(player?.color, getPlayerColor(`player${Math.min(idx + 1, 4)}Color`, '#328DCB'));
+                    const safeScore = Math.max(0, Number.parseInt(player?.score, 10) || 0);
                     scoresHtml += `
                         <div class="final-score-card" style="transition-delay: ${0.4 + idx * 0.15}s">
                             <div class="final-score-player">
-                                <span class="final-score-dot" style="--player-color: ${player.color}"></span>
-                                ${player.name}
+                                <span class="final-score-dot" style="--player-color: ${safePlayerColor}"></span>
+                                ${safePlayerName}
                             </div>
-                            <div class="final-score-value">${player.score} pts</div>
+                            <div class="final-score-value">${safeScore} pts</div>
                         </div>
                     `;
                 });
@@ -4706,7 +4971,7 @@
                         </div>
                         <div class="winner-badge" style="--winner-color: ${winnerColor}; --winner-shadow: ${winnerShadow}">
                             <span>🏆</span>
-                            <span>${winnerMessage}</span>
+                            <span>${safeWinnerMessage}</span>
                         </div>
                         <div class="final-scores">
                             ${scoresHtml}
@@ -4784,11 +5049,14 @@
                     : this.endReason === 'blocked'
                         ? 'Fin sur blocage'
                         : 'Fin sur grille pleine';
+                const safeWinnerMessage = escapeHtml(winnerMessage);
+                const safeReasonLabel = escapeHtml(reasonLabel);
 
                 const scoreRowsHtml = sortedPlayers.map((player, idx) => {
                     const rank = idx + 1;
                     const isLeader = player.score === winner.score;
                     const rankLabel = rank === 1 ? '1er' : rank === 2 ? '2e' : rank === 3 ? '3e' : `${rank}e`;
+                    const safeRankLabel = escapeHtml(rankLabel);
                     const cardClass = isLeader
                         ? 'bg-primary/10 dark:bg-primary/5 border-primary/30'
                         : 'bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60';
@@ -4797,20 +5065,24 @@
                         : isLeader
                             ? 'Leader'
                             : 'Chasseur';
+                    const safeStatusLabel = escapeHtml(statusLabel);
+                    const safePlayerName = escapeHtml(normalizePlayerName(player?.name, `Joueur ${idx + 1}`));
+                    const safePlayerColor = sanitizeHexColor(player?.color, getPlayerColor(`player${Math.min(idx + 1, 4)}Color`, '#328DCB'));
+                    const safeScore = Math.max(0, Number.parseInt(player?.score, 10) || 0);
 
                     return `
                         <div class="flex items-center gap-4 border rounded-2xl px-4 py-3 ${cardClass}">
                             <div class="relative">
                                 <div class="h-12 w-12 rounded-full border-2 flex items-center justify-center text-white font-black text-sm"
-                                    style="background:${player.color}; border-color:${player.color};">${rank}</div>
-                                <div class="absolute -top-1 -right-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-slate-900 text-white">${rankLabel}</div>
+                                    style="background:${safePlayerColor}; border-color:${safePlayerColor};">${rank}</div>
+                                <div class="absolute -top-1 -right-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-slate-900 text-white">${safeRankLabel}</div>
                             </div>
                             <div class="flex-1">
-                                <p class="font-bold text-slate-900 dark:text-slate-100">${player.name}</p>
-                                <p class="text-[11px] text-slate-500 dark:text-slate-400">${statusLabel}</p>
+                                <p class="font-bold text-slate-900 dark:text-slate-100">${safePlayerName}</p>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">${safeStatusLabel}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-xl font-bold ${isLeader ? 'text-primary' : 'text-slate-900 dark:text-slate-100'}">${player.score}</p>
+                                <p class="text-xl font-bold ${isLeader ? 'text-primary' : 'text-slate-900 dark:text-slate-100'}">${safeScore}</p>
                                 <p class="text-[10px] uppercase font-bold tracking-wider text-slate-500">points</p>
                             </div>
                         </div>
@@ -4820,9 +5092,9 @@
                 const gameOverScreen = document.createElement('div');
                 gameOverScreen.className = 'game-over-screen fixed inset-0 z-[120] bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm overflow-y-auto no-scrollbar';
                 const isOnlineSession = Boolean(bluetoothConnection);
-                const closeAction = isOnlineSession ? 'handleGameOverMenuAction()' : 'restartGame()';
+                const closeAction = isOnlineSession ? 'handleGameOverMenuAction()' : 'returnToMainMenu()';
                 const replayAction = isOnlineSession ? 'handleGameOverReplayAction()' : 'restartGame()';
-                const secondaryAction = isOnlineSession ? 'handleGameOverMenuAction()' : 'restartGame()';
+                const secondaryAction = isOnlineSession ? 'handleGameOverMenuAction()' : 'returnToMainMenu()';
                 const replayLabel = isOnlineSession ? 'Rejouer dans le salon' : 'Rejouer';
                 const secondaryLabel = isOnlineSession ? 'Retour au salon' : 'Menu principal';
                 gameOverScreen.innerHTML = `
@@ -4838,9 +5110,9 @@
                         <div class="rounded-3xl border border-primary/20 overflow-hidden mb-5"
                             style="background-image: linear-gradient(160deg, rgba(19,127,236,0.28), rgba(16,25,34,0.95));">
                             <div class="p-6">
-                                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2">${reasonLabel}</p>
+                                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2">${safeReasonLabel}</p>
                                 <p class="text-3xl font-black text-white leading-tight mb-2">${leaders.length > 1 ? 'Egalite en tete' : 'Victoire'}</p>
-                                <p class="text-sm text-slate-200">${winnerMessage}</p>
+                                <p class="text-sm text-slate-200">${safeWinnerMessage}</p>
                             </div>
                         </div>
 
@@ -4922,6 +5194,7 @@
         const APP_SESSION_STATE_VERSION = 1;
         const APP_SESSION_STATE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
         const LOBBY_ACTIVITY_MAX = 40;
+        const LOBBY_CHAT_MAX = 80;
         const MATCH_START_COUNTDOWN_MS = 3000;
         const MATCH_START_GO_MS = 460;
         const TURN_HINT_AUTO_HIDE_MS = 3400;
@@ -4967,6 +5240,7 @@
         let rematchLocalReady = false;
         let rematchReadyPeerIds = new Set();
         let lobbyActivityEntries = [];
+        let lobbyChatEntries = [];
         let copyFeedbackTimeouts = new Map();
         let currentScreenId = 'screenMainMenu';
         let sessionStateRestoreInProgress = false;
@@ -5213,7 +5487,7 @@
         function getPlayerColor(inputId, fallbackColor = '#328DCB') {
             const input = document.getElementById(inputId);
             const color = input ? String(input.value || '').trim() : '';
-            return color || fallbackColor;
+            return sanitizeHexColor(color, fallbackColor);
         }
 
         function ensureHiddenPlayerConfigInputs() {
@@ -5243,8 +5517,26 @@
             }
         }
 
+        function sanitizeHexColor(rawColor, fallbackColor = '#328DCB') {
+            const fallback = /^#[0-9a-fA-F]{6}$/.test(String(fallbackColor || '').trim())
+                ? String(fallbackColor).trim()
+                : '#328DCB';
+            const candidate = String(rawColor || '').trim();
+            return /^#[0-9a-fA-F]{6}$/.test(candidate) ? candidate : fallback;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function normalizePlayerName(rawName, fallbackName = 'Joueur') {
             const cleaned = String(rawName || '')
+                .replace(/[\u0000-\u001F\u007F]/g, '')
                 .replace(/\s+/g, ' ')
                 .trim()
                 .slice(0, 20);
@@ -5339,8 +5631,8 @@
             for (let idx = 0; idx < safeTotal; idx += 1) {
                 const fallbackName = idx === 0 ? 'Hote' : `Joueur ${idx + 1}`;
                 const player = players[idx];
-                const name = normalizePlayerName(player?.name || fallbackName, fallbackName);
-                const color = String(player?.color || getPlayerColor(`player${Math.min(idx + 1, 4)}Color`, '#328DCB'));
+                const name = escapeHtml(normalizePlayerName(player?.name || fallbackName, fallbackName));
+                const color = sanitizeHexColor(player?.color, getPlayerColor(`player${Math.min(idx + 1, 4)}Color`, '#328DCB'));
                 const isHostSlot = idx === 0;
                 const isLocalSlot = localSlots.has(idx);
                 const peerIdForSlot = isHost ? (isHostSlot ? 'host' : slotToPeerId.get(idx)) : (isHostSlot ? 'host' : null);
@@ -5466,12 +5758,7 @@
         }
 
         function escapeLobbyActivityText(value) {
-            return String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+            return escapeHtml(value);
         }
 
         function renderLobbyActivityFeed() {
@@ -5521,6 +5808,106 @@
             renderLobbyActivityFeed();
         }
 
+        function getLocalLobbySenderName() {
+            const fallbackName = isHost ? 'Hote' : 'Joueur';
+            return normalizePlayerName(getPlayerName('player1Name', fallbackName), fallbackName);
+        }
+
+        function resolveLobbyChatSenderName(senderName, targetId = 'host') {
+            const fallbackName = isHost
+                ? normalizePlayerName(hostPeerNames.get(targetId), 'Joueur')
+                : normalizePlayerName(getPlayerName('player1Name', 'Hote'), 'Hote');
+            return normalizePlayerName(senderName, fallbackName || 'Joueur');
+        }
+
+        function renderLobbyChatMessages() {
+            const feed = document.getElementById('lobbyChatMessages');
+            if (!feed) return;
+
+            if (!Array.isArray(lobbyChatEntries) || lobbyChatEntries.length === 0) {
+                feed.innerHTML = '<p class="text-[11px] text-slate-500 dark:text-slate-400">Aucun message pour le moment.</p>';
+                return;
+            }
+
+            const rows = lobbyChatEntries.map((entry) => {
+                const tone = String(entry?.tone || 'info');
+                const isLocal = tone === 'local';
+                const rowClasses = isLocal ? 'justify-end' : 'justify-start';
+                const bubbleClasses = isLocal
+                    ? 'bg-primary/15 border-primary/35'
+                    : tone === 'warning'
+                        ? 'bg-amber-500/10 border-amber-400/30'
+                        : 'bg-white/90 dark:bg-slate-900/75 border-slate-200 dark:border-slate-700/60';
+                const senderClasses = isLocal
+                    ? 'text-primary'
+                    : tone === 'warning'
+                        ? 'text-amber-400'
+                        : 'text-slate-700 dark:text-slate-200';
+                const senderName = escapeLobbyActivityText(entry?.senderName || 'Joueur');
+                const message = escapeLobbyActivityText(entry?.message || '');
+                return `
+                    <div class="flex ${rowClasses}">
+                        <div class="max-w-[92%] rounded-xl border px-2.5 py-2 ${bubbleClasses}">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[9px] font-black uppercase tracking-wider ${senderClasses}">${senderName}</span>
+                                <span class="text-[9px] font-bold text-slate-400">${formatLobbyActivityTime(entry.ts)}</span>
+                            </div>
+                            <p class="mt-1 text-[11px] leading-relaxed text-slate-700 dark:text-slate-100 break-words">${message}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            feed.innerHTML = rows;
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        function addLobbyChatMessage({
+            senderName,
+            message,
+            tone = 'info',
+            ts = Date.now()
+        }) {
+            const normalizedMessage = String(message || '').trim().slice(0, 140);
+            if (!normalizedMessage) return;
+
+            lobbyChatEntries.push({
+                senderName: normalizePlayerName(senderName, 'Joueur'),
+                message: normalizedMessage,
+                tone: String(tone || 'info'),
+                ts: Number.isFinite(Number(ts)) ? Number(ts) : Date.now()
+            });
+            if (lobbyChatEntries.length > LOBBY_CHAT_MAX) {
+                lobbyChatEntries = lobbyChatEntries.slice(-LOBBY_CHAT_MAX);
+            }
+            renderLobbyChatMessages();
+        }
+
+        function clearLobbyChatMessages() {
+            lobbyChatEntries = [];
+            renderLobbyChatMessages();
+        }
+
+        function handleSalonChatInputKeydown(event) {
+            if (!event || event.key !== 'Enter') return;
+            if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return;
+            event.preventDefault();
+            void sendLobbyChatFromInput();
+        }
+
+        async function sendLobbyChatFromInput() {
+            const input = document.getElementById('lobbyChatInput');
+            if (!input) return;
+            const text = String(input.value || '').trim();
+            if (!text) return;
+
+            const sent = await sendLobbyChatMessage(text);
+            if (sent) {
+                input.value = '';
+            }
+            input.focus();
+        }
+
         function getLobbyQuickMessagePreset(preset) {
             const key = String(preset || '').toLowerCase();
             if (key === 'ready') return 'Je suis pret.';
@@ -5528,34 +5915,38 @@
             return '';
         }
 
-        async function sendLobbyQuickMessage(presetOrText) {
+        async function sendLobbyChatMessage(rawText) {
             if (!bluetoothConnection || !connectionStatus.connected) {
                 showToast('Connexion salon indisponible.', 'info');
-                return;
-            }
-            if (networkMatchState.started) {
-                showToast('Messages rapides disponibles avant le lancement.', 'info');
-                return;
+                return false;
             }
 
-            const presetMessage = getLobbyQuickMessagePreset(presetOrText);
-            const message = String(presetMessage || presetOrText || '').trim().slice(0, 120);
-            if (!message) return;
+            const message = String(rawText || '').trim().slice(0, 140);
+            if (!message) return false;
 
-            const senderName = normalizePlayerName(
-                getPlayerName('player1Name', isHost ? 'Hote' : 'Joueur'),
-                isHost ? 'Hote' : 'Joueur'
-            );
-            addLobbyActivity(`${senderName}: ${message}`, 'local');
+            const senderName = getLocalLobbySenderName();
+            addLobbyChatMessage({
+                senderName,
+                message,
+                tone: 'local'
+            });
 
             const sent = await sendBluetoothData({
-                type: 'lobbyQuickMessage',
+                type: 'lobbyChatMessage',
                 senderName,
                 text: message
             });
             if (!sent) {
                 showToast('Message non envoye.', 'error');
             }
+            return sent;
+        }
+
+        async function sendLobbyQuickMessage(presetOrText) {
+            const presetMessage = getLobbyQuickMessagePreset(presetOrText);
+            const message = String(presetMessage || presetOrText || '').trim().slice(0, 140);
+            if (!message) return;
+            await sendLobbyChatMessage(message);
         }
 
         async function copyHostSessionCodeFromSalon() {
@@ -5585,8 +5976,7 @@
         function refreshSalonQuickActions() {
             const canUseSalonActions = Boolean(
                 bluetoothConnection &&
-                connectionStatus.connected &&
-                !networkMatchState.started
+                connectionStatus.connected
             );
             const code = sanitizeSessionCode(
                 connectionStatus.sessionCode || bluetoothConnection?.sessionCode || bluetoothSession.code || ''
@@ -5594,6 +5984,8 @@
             const inviteLink = code ? buildSessionInviteLink() : '';
             const copyCodeBtn = document.getElementById('btnSalonCopyCode');
             const copyLinkBtn = document.getElementById('btnSalonCopyLink');
+            const chatInput = document.getElementById('lobbyChatInput');
+            const sendChatBtn = document.getElementById('btnSendLobbyChat');
             const quickButtons = document.querySelectorAll('button[onclick^="sendLobbyQuickMessage"]');
 
             if (copyCodeBtn) {
@@ -5601,6 +5993,15 @@
             }
             if (copyLinkBtn) {
                 copyLinkBtn.disabled = !inviteLink;
+            }
+            if (chatInput) {
+                chatInput.disabled = !canUseSalonActions;
+                if (!canUseSalonActions) {
+                    chatInput.blur();
+                }
+            }
+            if (sendChatBtn) {
+                sendChatBtn.disabled = !canUseSalonActions;
             }
             quickButtons.forEach((button) => {
                 button.disabled = !canUseSalonActions;
@@ -5632,6 +6033,29 @@
             }
 
             if (window.game?.gameOver) {
+                if (isHost && networkMatchState.hostReady && networkMatchState.guestReady) {
+                    const launched = await startNetworkMatchCountdown({ broadcast: true });
+                    if (!launched) {
+                        showToast('Impossible de lancer la manche pour le moment.', 'info');
+                    }
+                    return;
+                }
+
+                if (isHost && networkMatchState.hostReady && !networkMatchState.guestReady) {
+                    const requiredGuests = getRequiredGuestCount();
+                    const readyGuests = Math.min(
+                        requiredGuests,
+                        Math.max(0, Number.parseInt(networkMatchState.readyGuestCount, 10) || 0)
+                    );
+                    showToast(`En attente joueurs (${readyGuests}/${requiredGuests}).`, 'info');
+                    return;
+                }
+
+                if (!isHost && rematchLocalReady) {
+                    showToast('Demande deja envoyee. Attendez l hote.', 'info');
+                    return;
+                }
+
                 await requestOnlineRematch();
                 return;
             }
@@ -6322,6 +6746,7 @@
             const lobbyPrimaryButton = document.getElementById('btnLobbyPrimaryAction');
             const isBusy = connectionStatus.connecting || connectionStatus.reconnecting;
             const onlineMatchEnded = Boolean(bluetoothConnection && window.game?.gameOver);
+            const countdownActive = isMatchCountdownRunning() || matchStartCountdown.starting;
 
             if (hostButton) {
                 hostButton.dataset.defaultLabel = hostButton.dataset.defaultLabel || hostButton.textContent;
@@ -6393,11 +6818,24 @@
                     disabled = isBusy;
                 } else if (onlineMatchEnded) {
                     if (isHost) {
-                        label = networkMatchState.hostReady ? 'Attente invites' : 'Valider revanche';
-                        disabled = isBusy || networkMatchState.hostReady;
+                        if (!networkMatchState.hostReady) {
+                            label = 'Valider revanche';
+                            disabled = isBusy || !connectionStatus.connected;
+                        } else if (networkMatchState.guestReady) {
+                            label = countdownActive ? 'Demarrage...' : 'Lancer la manche';
+                            disabled = isBusy || !connectionStatus.connected || countdownActive;
+                        } else {
+                            const requiredGuests = getRequiredGuestCount();
+                            const readyGuests = Math.min(
+                                requiredGuests,
+                                Math.max(0, Number.parseInt(networkMatchState.readyGuestCount, 10) || 0)
+                            );
+                            label = `Attente invites (${readyGuests}/${requiredGuests})`;
+                            disabled = true;
+                        }
                     } else {
                         label = rematchLocalReady ? 'Demande envoyee' : 'Demander revanche';
-                        disabled = isBusy || rematchLocalReady;
+                        disabled = isBusy || !connectionStatus.connected || rematchLocalReady;
                     }
                 } else if (!networkMatchState.started) {
                     if (isHost) {
@@ -6573,7 +7011,7 @@
                 openOnlineLobby(false);
                 return;
             }
-            restartGame();
+            returnToMainMenu();
         }
 
         function updateLobbyHint() {
@@ -6687,6 +7125,7 @@
                     blitzTurnSeconds: window.game.turnDurationMs ? window.game.turnDurationMs / 1000 : 10,
                     gravityEnabled: Boolean(window.game.gravityEnabled),
                     hyperNexusEnabled: Boolean(window.game.hyperNexusEnabled),
+                    stormEnabled: Boolean(window.game.stormEnabled),
                     obstacleEnabled: Boolean(window.game.obstacleEnabled),
                     obstacleDensity: normalizeObstacleDensity(window.game.obstacleDensity)
                 }
@@ -6802,11 +7241,6 @@
             base.searchParams.set('mode', 'bluetooth');
             base.searchParams.set('role', 'join');
             base.searchParams.set('session', code);
-
-            const signalingUrl = getSelectedSignalingUrl();
-            if (signalingUrl) {
-                base.searchParams.set('signal', signalingUrl);
-            }
             return base.toString();
         }
 
@@ -6830,18 +7264,9 @@
                 return;
             }
 
-            const signalParam = params.get('signal');
             const sessionParam = sanitizeSessionCode(params.get('session'));
             const modeParam = params.get('mode');
             const roleParam = params.get('role');
-
-            if (signalParam) {
-                const signalingInput = document.getElementById('signalingUrlInput');
-                if (signalingInput) {
-                    signalingInput.value = signalParam;
-                    persistSignalingUrl(signalParam);
-                }
-            }
 
             if (sessionParam) {
                 const sessionInput = document.getElementById('sessionCodeInput');
@@ -6899,6 +7324,8 @@
                 input.value = code;
             }
 
+            clearLobbyChatMessages();
+
             bluetoothSession.code = code;
             bluetoothSession.expectedCode = code;
             bluetoothSession.verified = true;
@@ -6921,6 +7348,8 @@
                 input.value = expectedCode;
                 input.focus();
             }
+
+            clearLobbyChatMessages();
 
             bluetoothSession.code = null;
             bluetoothSession.expectedCode = expectedCode || null;
@@ -7150,6 +7579,7 @@
             localNetworkPlayerIndices = [];
             bluetoothConnection = null;
             clearLobbyActivityFeed();
+            clearLobbyChatMessages();
         }
 
         function sleep(ms) {
@@ -8029,6 +8459,7 @@
         }
 
         function showError(message) {
+            const safeMessage = escapeHtml(message);
             const errorModal = document.createElement('div');
             errorModal.className = 'modal active fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm';
             errorModal.innerHTML = `
@@ -8037,7 +8468,7 @@
                 <span class="material-symbols-outlined text-[28px]">warning</span>
             </div>
             <h2 class="text-xl font-bold mb-2 dark:text-white text-slate-900">Erreur reseau</h2>
-            <p class="mb-6 text-sm dark:text-slate-300 text-slate-600">${message}</p>
+            <p class="mb-6 text-sm dark:text-slate-300 text-slate-600">${safeMessage}</p>
             <button class="w-full bg-slate-100 dark:bg-slate-700 dark:text-white text-slate-700 font-bold py-3.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" onclick="this.closest('.modal').remove()">Fermer</button>
         </div>
     `;
@@ -8212,6 +8643,8 @@
             if (connectionStatus.statusDetail && (connectionStatus.reconnecting || connectionStatus.connecting)) {
                 statusMeta = `${statusMeta} | ${connectionStatus.statusDetail}`;
             }
+            const safeStatusTitle = escapeHtml(statusTitle);
+            const safeStatusMeta = escapeHtml(statusMeta);
 
             statusDiv.dataset.latency = connectionStatus.connected
                 ? (connectionStatus.latencyQuality || 'unknown')
@@ -8220,8 +8653,8 @@
             statusDiv.innerHTML = `
         <span class="status-indicator"></span>
         <span class="status-copy">
-            <span class="status-title">${statusTitle}</span>
-            <span class="status-meta">${statusMeta}</span>
+            <span class="status-title">${safeStatusTitle}</span>
+            <span class="status-meta">${safeStatusMeta}</span>
         </span>
         <button
             type="button"
@@ -8319,13 +8752,14 @@
             const blitzSuffix = gameOptions.blitzEnabled
                 ? ` | Blitz ${gameOptions.blitzTurnSeconds}s`
                 : '';
+            const stormSuffix = gameOptions.stormEnabled ? ' | Tempete' : '';
             const obstaclesSuffix = gameOptions.obstacleEnabled ? ' | Obstacles' : '';
             const playersSuffix = ` | ${players.length} joueurs`;
             const sessionSuffix = bluetoothSession.code
                 ? ` | Session ${bluetoothSession.code}`
                 : (bluetoothSession.expectedCode ? ` | Session attendue ${bluetoothSession.expectedCode}` : '');
             showToast(
-                `Salon WebRTC pret (${selectedGridSize}x${selectedGridSize}${playersSuffix}${blitzSuffix}${obstaclesSuffix}${sessionSuffix}).`,
+                `Salon WebRTC pret (${selectedGridSize}x${selectedGridSize}${playersSuffix}${blitzSuffix}${stormSuffix}${obstaclesSuffix}${sessionSuffix}).`,
                 'success'
             );
         }
@@ -8753,21 +9187,26 @@
                         updateLobbyHint();
                     }
                     break;
+                case 'lobbyChatMessage':
                 case 'lobbyQuickMessage':
                     {
-                        const quickText = String(data.text || '').trim().slice(0, 120);
-                        const senderName = normalizePlayerName(
-                            data.senderName,
-                            (isHost ? hostPeerNames.get(targetId) : getPlayerName('player1Name', 'Hote')) || 'Joueur'
-                        );
-                        if (!quickText) break;
+                        const chatText = String(data.text || '').trim().slice(0, 140);
+                        if (!chatText) break;
 
-                        addLobbyActivity(`${senderName}: ${quickText}`, 'info');
+                        const senderName = resolveLobbyChatSenderName(data.senderName, targetId);
+                        addLobbyChatMessage({
+                            senderName,
+                            message: chatText,
+                            tone: 'info'
+                        });
                         if (isHost && targetId && targetId !== 'host') {
+                            const relayType = data.type === 'lobbyQuickMessage'
+                                ? 'lobbyQuickMessage'
+                                : 'lobbyChatMessage';
                             await sendBluetoothData({
-                                type: 'lobbyQuickMessage',
+                                type: relayType,
                                 senderName,
-                                text: quickText
+                                text: chatText
                             }, { excludeTargetId: targetId });
                         }
                     }
@@ -8965,6 +9404,7 @@
                         ),
                         gravityEnabled: Boolean(gameState.gravityEnabled),
                         hyperNexusEnabled: Boolean(gameState.hyperNexusEnabled),
+                        stormEnabled: Boolean(gameState.stormEnabled),
                         obstacleEnabled: Boolean(gameState.obstacleEnabled),
                         obstacleDensity: normalizeObstacleDensity(gameState.obstacleDensity)
                     },
@@ -9004,6 +9444,11 @@
                 movesUntilShiftCount: gameState.movesUntilShiftCount,
                 initialMovesUntilShift: gameState.initialMovesUntilShift,
                 hyperNexusEnabled: Boolean(gameState.hyperNexusEnabled),
+                stormEnabled: Boolean(gameState.stormEnabled),
+                stormMoveInterval: gameState.stormMoveInterval,
+                stormEventsTriggered: gameState.stormEventsTriggered,
+                stormLastEventType: gameState.stormLastEventType,
+                stormNextTriggerAtPoints: gameState.stormNextTriggerAtPoints,
                 obstacleEnabled: Boolean(gameState.obstacleEnabled),
                 obstacleDensity: normalizeObstacleDensity(gameState.obstacleDensity),
                 obstacles: gameState.obstacles || [],
@@ -9042,6 +9487,11 @@
                 movesUntilShiftCount: window.game.movesUntilShiftCount,
                 initialMovesUntilShift: window.game.initialMovesUntilShift,
                 hyperNexusEnabled: window.game.hyperNexusEnabled,
+                stormEnabled: window.game.stormEnabled,
+                stormMoveInterval: window.game.stormMoveInterval,
+                stormEventsTriggered: window.game.stormEventsTriggered,
+                stormLastEventType: window.game.stormLastEventType,
+                stormNextTriggerAtPoints: window.game.stormNextTriggerAtPoints,
                 obstacleEnabled: window.game.obstacleEnabled,
                 obstacleDensity: normalizeObstacleDensity(window.game.obstacleDensity),
                 onlinePlayersCount: normalizeOnlinePlayersCount(window.game.players?.length || 2),
@@ -9060,6 +9510,7 @@
         function updateGamePaceUI() {
             const blitzTurnSelector = document.getElementById('blitzTurnSelector');
             const gamePace = document.getElementById('gamePace')?.value ?? 'classic';
+            const stormEnabled = document.getElementById('stormMode')?.value === 'on';
             if (blitzTurnSelector) {
                 blitzTurnSelector.style.display = gamePace === 'blitz' ? 'block' : 'none';
             }
@@ -9068,9 +9519,13 @@
             if (!modeDescription) return;
 
             const baseDescription = modeDescription.dataset.baseDescription || modeDescription.textContent || '';
-            modeDescription.textContent = gamePace === 'blitz'
+            let fullDescription = gamePace === 'blitz'
                 ? `${baseDescription} Mode Blitz: chrono limite a chaque tour.`
                 : baseDescription;
+            if (stormEnabled) {
+                fullDescription += ' Tempete active: cadence evolutive (6, puis 5, puis 4 coups).';
+            }
+            modeDescription.textContent = fullDescription;
         }
 
         function updatePlayerCards() {
@@ -9233,6 +9688,7 @@
             const selectedGridSize = normalizeGridSize(document.getElementById('gridSize')?.value ?? 8);
             const gameOptions = getGameOptionsFromSetup();
             const blitzSuffix = gameOptions.blitzEnabled ? ` | Blitz ${gameOptions.blitzTurnSeconds}s` : '';
+            const stormSuffix = gameOptions.stormEnabled ? ' | Tempete' : '';
             const obstaclesSuffix = gameOptions.obstacleEnabled ? ' | Obstacles' : '';
             if (gameMode === 'bluetooth') {
                 showError('Utilisez les boutons WebRTC pour lancer la partie.');
@@ -9256,7 +9712,7 @@
                 window.game = new Game(players, true, selectedGridSize, gameOptions);
                 window.game.ai.difficulty = difficulty;
                 showToast(
-                    `Partie contre IA (${difficulty}) lancee (${selectedGridSize}x${selectedGridSize}${blitzSuffix}${obstaclesSuffix}).`,
+                    `Partie contre IA (${difficulty}) lancee (${selectedGridSize}x${selectedGridSize}${blitzSuffix}${stormSuffix}${obstaclesSuffix}).`,
                     'success'
                 );
                 return;
@@ -9272,7 +9728,7 @@
 
             showGameView();
             window.game = new Game(players, false, selectedGridSize, gameOptions);
-            showToast(`Partie lancee (${selectedGridSize}x${selectedGridSize}${blitzSuffix}${obstaclesSuffix}).`, 'success');
+            showToast(`Partie lancee (${selectedGridSize}x${selectedGridSize}${blitzSuffix}${stormSuffix}${obstaclesSuffix}).`, 'success');
         }
 
         function undoLastMove() {
@@ -9366,10 +9822,55 @@
             modal.classList.add('hidden');
         }
 
+        function quitCurrentMatch() {
+            hideConfirmModal();
+            closeGameOverScreens();
+            clearAppSessionState();
+
+            if (bluetoothConnection) {
+                disconnectBluetoothDevice();
+            }
+
+            if (window.game && typeof window.game.stopTurnTimer === 'function') {
+                window.game.stopTurnTimer();
+            }
+
+            window.game = null;
+            moveHistory = [];
+            navToScreen('screenMainMenu');
+            updateWebRTCActionButtons();
+        }
+
         function restartGame() {
             hideConfirmModal();
-            clearAppSessionState();
-            location.reload();
+            closeGameOverScreens();
+
+            if (bluetoothConnection) {
+                if (window.game?.gameOver) {
+                    requestOnlineRematch().catch((error) => {
+                        console.error('Erreur de rematch:', error);
+                        showToast('Impossible de relancer la manche.', 'error');
+                    });
+                } else {
+                    openOnlineLobby(false);
+                }
+                return;
+            }
+
+            if (!window.game || typeof window.game.initializeGame !== 'function') {
+                clearAppSessionState();
+                navToScreen('screenMainMenu');
+                return;
+            }
+
+            window.game.currentPlayerIndex = 0;
+            window.game.initializeGame();
+            showGameView();
+            persistAppSessionState();
+        }
+
+        function returnToMainMenu() {
+            quitCurrentMatch();
         }
 
         function toggleSound() {
@@ -9517,6 +10018,7 @@
             applyWebRTCParamsFromUrl();
             refreshHostInviteTools();
             renderLobbyActivityFeed();
+            renderLobbyChatMessages();
             initializeSetupPreferencePersistence();
             installAppSessionStateAutoSaveHooks();
             updateConnectionStatus({

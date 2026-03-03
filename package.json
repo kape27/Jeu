@@ -6,9 +6,23 @@
   "main": "signaling-server.js",
   "scripts": {
     "start": "node signaling-server.js",
-    "start:signaling": "node signaling-server.js"
+    "start:signaling": "node signaling-server.js",
+    "build:css": "node -e \"require('fs').mkdirSync('assets',{recursive:true})\" && tailwindcss -c tailwind.config.cjs -i ./styles/tailwind-input.css -o ./assets/tailwind.generated.css --minify",
+    "android:prepare": "npm run build:css && node scripts/prepare-capacitor-web.js",
+    "android:sync": "npm run android:prepare && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "android:build:release": "npm run android:sync && cd android && gradlew.bat assembleRelease"
   },
   "dependencies": {
     "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.10",
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "tailwindcss": "^3.4.17"
   }
 }
