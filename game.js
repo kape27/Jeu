@@ -4540,6 +4540,14 @@
                         await createOfferAndSend();
                     }
                     break;
+                case 'waiting-host':
+                    if (!isHost) {
+                        bluetoothConnection.peerReady = false;
+                        updateConnectionStatus({
+                            statusDetail: 'Hote hors ligne. Attente de sa connexion...'
+                        });
+                    }
+                    break;
                 case 'peer-left':
                     bluetoothConnection.peerReady = false;
                     showToast('Adversaire deconnecte, reprise automatique...', 'info');

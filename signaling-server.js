@@ -283,6 +283,17 @@ function sendJoined(ws, roomCode, room) {
     });
 }
 
+function sendWaitingHost(ws, roomCode, room) {
+    send(ws, {
+        type: 'waiting-host',
+        room: roomCode,
+        peerId: ws.peerId,
+        peerCount: getPeerCount(room),
+        maxPeers: room.maxPeers,
+        participants: listRoomPeerIds(room)
+    });
+}
+
 function findGuestIdBySocket(room, targetSocket) {
     for (const [peerId, socket] of room.guests.entries()) {
         if (socket === targetSocket) {
@@ -399,14 +410,16 @@ function handleJoin(ws, message) {
             return;
         }
 
-        room.maxPeers = normalizeMaxPeers(message.maxPeers || room.maxPeers || MAX_PLAYERS);
+        const requestedMaxPeers = normalizeMaxPeers(message.maxPeers || room.maxPeers || MAX_PLAYERS);
+        const minimumPeersForCurrentRoom = Math.max(2, room.guests.size + 1);
+        room.maxPeers = Math.max(requestedMaxPeers, minimumPeersForCurrentRoom);
         room.host = ws;
         ws.roomCode = roomCode;
         ws.role = 'host';
         ws.peerId = 'host';
 
         sendJoined(ws, roomCode, room);
-        for (const guestSocket of room.guests.values()) {
+        for (const [guestPeerId, guestSocket] of room.guests.entries()) {
             send(guestSocket, {
                 type: 'peer-ready',
                 room: roomCode,
@@ -414,14 +427,14 @@ function handleJoin(ws, message) {
                 peerId: 'host',
                 participants: listRoomPeerIds(room)
             });
-        }
-        return;
-    }
 
-    if (!isSocketOpen(room.host)) {
-        send(ws, { type: 'error', message: 'Hote indisponible.' });
-        if (room.guests.size === 0) {
-            rooms.delete(roomCode);
+            send(ws, {
+                type: 'peer-ready',
+                room: roomCode,
+                fromId: guestPeerId,
+                peerId: guestPeerId,
+                participants: listRoomPeerIds(room)
+            });
         }
         return;
     }
@@ -439,20 +452,24 @@ function handleJoin(ws, message) {
     ws.peerId = assignedPeerId;
 
     sendJoined(ws, roomCode, room);
-    send(room.host, {
-        type: 'peer-ready',
-        room: roomCode,
-        fromId: assignedPeerId,
-        peerId: assignedPeerId,
-        participants: listRoomPeerIds(room)
-    });
-    send(ws, {
-        type: 'peer-ready',
-        room: roomCode,
-        fromId: 'host',
-        peerId: 'host',
-        participants: listRoomPeerIds(room)
-    });
+    if (isSocketOpen(room.host)) {
+        send(room.host, {
+            type: 'peer-ready',
+            room: roomCode,
+            fromId: assignedPeerId,
+            peerId: assignedPeerId,
+            participants: listRoomPeerIds(room)
+        });
+        send(ws, {
+            type: 'peer-ready',
+            room: roomCode,
+            fromId: 'host',
+            peerId: 'host',
+            participants: listRoomPeerIds(room)
+        });
+    } else {
+        sendWaitingHost(ws, roomCode, room);
+    }
 }
 
 function resolveSignalTarget(room, sourceSocket, targetId) {
@@ -607,7 +624,12 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('message', (message) => {
-        handleClientMessage(ws, message.toString());
+        try {
+            handleClientMessage(ws, message.toString());
+        } catch (error) {
+            console.error('Unhandled WS message error:', error?.message || error);
+            send(ws, { type: 'error', message: 'Erreur serveur temporaire.' });
+        }
     });
 
     ws.on('close', () => {
@@ -621,14 +643,22 @@ wss.on('connection', (ws, req) => {
 
 const heartbeatTimer = setInterval(() => {
     pruneRateLimitMap();
-    competitionApi.onTick();
+    try {
+        competitionApi.onTick();
+    } catch (error) {
+        console.error('Competition API tick error:', error?.message || error);
+    }
     wss.clients.forEach((ws) => {
-        if (ws.isAlive === false) {
-            ws.terminate();
-            return;
+        try {
+            if (ws.isAlive === false) {
+                ws.terminate();
+                return;
+            }
+            ws.isAlive = false;
+            ws.ping();
+        } catch (error) {
+            console.error('WS heartbeat error:', error?.message || error);
         }
-        ws.isAlive = false;
-        ws.ping();
     });
 }, 30000);
 

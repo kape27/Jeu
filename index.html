@@ -8232,6 +8232,14 @@
                         updateConnectionStatus({ statusDetail: 'Hote connecte. Negotiation WebRTC...' });
                     }
                     break;
+                case 'waiting-host':
+                    if (!isHost) {
+                        bluetoothConnection.peerReady = false;
+                        updateConnectionStatus({
+                            statusDetail: 'Hote hors ligne. Attente de sa connexion...'
+                        });
+                    }
+                    break;
                 case 'peer-left':
                     if (isHost && fromId !== 'host') {
                         await handlePeerDisconnection(fromId);
