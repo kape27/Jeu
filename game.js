@@ -3937,6 +3937,16 @@
             return error;
         }
 
+        function isTerminalSignalingErrorMessage(rawMessage) {
+            const message = String(rawMessage || '').toLowerCase();
+            return (
+                message.includes('hote indisponible') ||
+                message.includes('session complete') ||
+                message.includes('role host est deja occupe') ||
+                message.includes('code de session invalide')
+            );
+        }
+
         function getWebRTCPeerConstructor() {
             const ctor = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
             if (ctor && !window.RTCPeerConnection) {
@@ -4254,6 +4264,9 @@
                         pendingDataChannelReady.reject(error);
                         pendingDataChannelReady = null;
                     }
+                    if (error?.name === 'SignalingTerminalError') {
+                        return;
+                    }
                     if (connectionStatus.connected && !reconnectInProgress) {
                         handleDisconnection();
                     }
@@ -4264,7 +4277,9 @@
                     pendingDataChannelReady.reject(createBluetoothError('Signalisation interrompue.'));
                     pendingDataChannelReady = null;
                 }
-                if (!connectionStatus.connected && !connectionStatus.connecting && !reconnectInProgress) return;
+                if (reconnectionBlockedReason) return;
+                const shouldAttemptRecovery = (connectionStatus.connected || connectionStatus.reconnecting) && !reconnectInProgress;
+                if (!shouldAttemptRecovery) return;
                 handleDisconnection();
             };
             socket.onclose = onSocketInterrupted;
@@ -4576,7 +4591,14 @@
                     }
                     break;
                 case 'error':
-                    throw createBluetoothError(message.message || 'Erreur de signalisation.');
+                    {
+                        const reason = String(message.message || 'Erreur de signalisation.');
+                        if (isTerminalSignalingErrorMessage(reason)) {
+                            reconnectionBlockedReason = reason;
+                            throw createBluetoothError(reason, 'SignalingTerminalError');
+                        }
+                        throw createBluetoothError(reason);
+                    }
                 default:
                     // Ignore unsupported signaling message.
                     break;
@@ -4888,6 +4910,21 @@
 
         async function handleDisconnection() {
             if (!bluetoothConnection || reconnectInProgress) return;
+            if (reconnectionBlockedReason) {
+                updateConnectionStatus({
+                    connected: false,
+                    connecting: false,
+                    reconnecting: false,
+                    error: reconnectionBlockedReason,
+                    latencyMs: null,
+                    latencyQuality: 'unknown',
+                    reconnectAttempt: 0,
+                    reconnectTotal: 0,
+                    nextRetryInMs: 0,
+                    statusDetail: ''
+                });
+                return;
+            }
 
             reconnectInProgress = true;
             stopBluetoothHeartbeat();
