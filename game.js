@@ -3932,12 +3932,49 @@
             return error;
         }
 
-        function ensureBluetoothSupported() {
-            if (window.RTCPeerConnection && window.WebSocket) {
+        function getWebRTCPeerConstructor() {
+            const ctor = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+            if (ctor && !window.RTCPeerConnection) {
+                window.RTCPeerConnection = ctor;
+            }
+            return window.RTCPeerConnection || null;
+        }
+
+        function isSecureContextForWebRTC() {
+            if (window.isSecureContext) return true;
+            const protocol = String(window.location?.protocol || '').toLowerCase();
+            const hostname = String(window.location?.hostname || '').toLowerCase();
+            if (protocol === 'https:' || protocol === 'capacitor:' || protocol === 'ionic:' || protocol === 'app:') {
                 return true;
             }
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+                return true;
+            }
+            return false;
+        }
+
+        function ensureBluetoothSupported() {
+            const rtcCtor = getWebRTCPeerConstructor();
+            if (rtcCtor && window.WebSocket) {
+                return true;
+            }
+            const protocol = String(window.location?.protocol || '').toLowerCase();
+            const hostname = String(window.location?.hostname || '').toLowerCase();
+            let message = 'WebRTC non supporte sur ce navigateur.';
+            if (!window.WebSocket) {
+                message = 'WebSocket indisponible sur ce navigateur.';
+            } else if (!rtcCtor && !isSecureContextForWebRTC()) {
+                message = 'WebRTC bloque: utilisez HTTPS (ou localhost/APK) pour jouer en ligne.';
+            }
+            console.warn('WebRTC unavailable', {
+                hasWebSocket: Boolean(window.WebSocket),
+                hasRTCPeerConnection: Boolean(rtcCtor),
+                secureContext: Boolean(window.isSecureContext),
+                protocol,
+                hostname
+            });
             handleConnectionError(
-                createBluetoothError('WebRTC non supporte sur ce navigateur.', 'NotSupportedError')
+                createBluetoothError(message, 'NotSupportedError')
             );
             return false;
         }
