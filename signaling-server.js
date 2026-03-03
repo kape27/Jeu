@@ -1,4 +1,6 @@
 const http = require('http');
+const path = require('path');
+const { createCompetitionApi } = require('./server/competition-api');
 const { WebSocketServer, WebSocket } = require('ws');
 
 const PORT = Number.parseInt(process.env.PORT || '8080', 10);
@@ -29,6 +31,19 @@ const RATE_LIMIT_MAX_JOINS = clampNumber(
     5,
     1000
 );
+const RATE_LIMIT_MAX_AUTH = clampNumber(
+    Number.parseInt(process.env.RATE_LIMIT_MAX_AUTH || '25', 10),
+    5,
+    300
+);
+const SESSION_TTL_MS = clampNumber(
+    Number.parseInt(process.env.SESSION_TTL_MS || String(7 * 24 * 60 * 60 * 1000), 10),
+    60 * 60 * 1000,
+    90 * 24 * 60 * 60 * 1000
+);
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'jeu.sqlite');
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').trim();
+const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const ALLOW_EMPTY_ORIGIN = String(process.env.ALLOW_EMPTY_ORIGIN || 'false').toLowerCase() === 'true';
 const DEFAULT_ALLOWED_ORIGINS = [
     'capacitor://localhost',
@@ -211,6 +226,14 @@ function listRoomPeerIds(room) {
 
 function getPeerCount(room) {
     return listRoomPeerIds(room).length;
+}
+
+function getRoomsStats() {
+    let clients = 0;
+    for (const room of rooms.values()) {
+        clients += getPeerCount(room);
+    }
+    return { rooms: rooms.size, clients };
 }
 
 function send(ws, payload) {
@@ -492,18 +515,36 @@ function handleClientMessage(ws, rawMessage) {
     send(ws, { type: 'error', message: 'Type de message non supporte.' });
 }
 
+const competitionApi = createCompetitionApi({
+    isOriginAllowed,
+    getRoomsStats,
+    maxPlayers: MAX_PLAYERS,
+    dbPath: DB_PATH,
+    supabaseUrl: SUPABASE_URL,
+    supabaseServiceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+    authRateLimitMax: RATE_LIMIT_MAX_AUTH,
+    sessionTtlMs: SESSION_TTL_MS,
+    rateWindowMs: RATE_LIMIT_WINDOW_MS
+});
+
 const server = http.createServer((req, res) => {
-    if (req.url === '/health') {
-        let clients = 0;
-        for (const room of rooms.values()) {
-            clients += getPeerCount(room);
+    competitionApi.handleHttp(req, res).then((handled) => {
+        if (handled) {
+            return;
         }
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ ok: true, rooms: rooms.size, clients, maxPlayers: MAX_PLAYERS }));
-        return;
-    }
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('WebRTC signaling server is running.\n');
+        if (req.url === '/health') {
+            const stats = getRoomsStats();
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ ok: true, rooms: stats.rooms, clients: stats.clients, maxPlayers: MAX_PLAYERS }));
+            return;
+        }
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('WebRTC signaling server is running.\n');
+    }).catch((error) => {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ ok: false, error: 'Erreur serveur.' }));
+        console.error('API error', error?.message || error);
+    });
 });
 
 const wss = new WebSocketServer({
@@ -544,6 +585,7 @@ wss.on('connection', (ws, req) => {
 
 const heartbeatTimer = setInterval(() => {
     pruneRateLimitMap();
+    competitionApi.onTick();
     wss.clients.forEach((ws) => {
         if (ws.isAlive === false) {
             ws.terminate();
@@ -560,5 +602,6 @@ wss.on('close', () => {
 
 server.listen(PORT, HOST, () => {
     console.log(`Signaling WS server listening on ws://${HOST}:${PORT}${WS_PATH}`);
-    console.log(`Security: maxPayload=${MAX_WS_PAYLOAD_BYTES}B, rate=${RATE_LIMIT_MAX_MESSAGES}/min, joinRate=${RATE_LIMIT_MAX_JOINS}/min, origins=${ALLOWED_ORIGINS.join(', ')}, allowEmptyOrigin=${ALLOW_EMPTY_ORIGIN}`);
+    console.log(`Competition API: /api/auth/*, /api/events* (db=${competitionApi.getDbPath()})`);
+    console.log(`Security: maxPayload=${MAX_WS_PAYLOAD_BYTES}B, rate=${RATE_LIMIT_MAX_MESSAGES}/min, joinRate=${RATE_LIMIT_MAX_JOINS}/min, authRate=${RATE_LIMIT_MAX_AUTH}/min, origins=${ALLOWED_ORIGINS.join(', ')}, allowEmptyOrigin=${ALLOW_EMPTY_ORIGIN}`);
 });

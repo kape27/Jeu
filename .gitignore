@@ -4,3 +4,11 @@ android/.gradle/
 android/local.properties
 android/build/
 android/app/build/
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.env*
+!.env.example
+!.env.supabase.example
+supabase/.temp/

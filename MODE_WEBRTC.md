@@ -48,3 +48,37 @@ Variables d environnement recommandees:
 - `RATE_LIMIT_WINDOW_MS=60000`
 - `RATE_LIMIT_MAX_MESSAGES=180`
 - `RATE_LIMIT_MAX_JOINS=30`
+- `RATE_LIMIT_MAX_AUTH=25`
+- `SESSION_TTL_MS=604800000` (7 jours)
+- `SUPABASE_URL=https://<project>.supabase.co` (recommande)
+- `SUPABASE_SERVICE_ROLE_KEY=<service_role_key>` (secret)
+- `DB_PATH=/opt/render/project/data/jeu.sqlite` (fallback local si Supabase non configure)
+
+## Setup Supabase
+1. Creer un projet Supabase.
+2. Ouvrir SQL Editor et executer:
+   - `supabase/schema.sql`
+3. Dans Render, definir:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+4. Redemarrer le service: l API utilisera Supabase automatiquement.
+
+## API Comptes + Competitions (MVP)
+Le meme serveur expose maintenant une API REST:
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `GET /api/events`
+- `POST /api/events`
+- `GET /api/events/:code`
+- `POST /api/events/:code/join`
+- `POST /api/events/:code/leave`
+- `POST /api/events/:code/start`
+- `POST /api/events/:code/matches/:matchId/result`
+
+Format auth:
+- Header `Authorization: Bearer <token>`
+
+Page de test rapide:
+- Ouvrir `competition.html` dans le navigateur pour gerer comptes, salons et bracket.

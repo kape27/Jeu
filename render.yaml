@@ -7,6 +7,8 @@ services:
     startCommand: node signaling-server.js
     healthCheckPath: /health
     envVars:
+      - key: NODE_VERSION
+        value: "22.11.0"
       - key: PORT
         value: 10000
       - key: WS_PATH
@@ -23,3 +25,13 @@ services:
         value: "180"
       - key: RATE_LIMIT_MAX_JOINS
         value: "30"
+      - key: RATE_LIMIT_MAX_AUTH
+        value: "25"
+      - key: SESSION_TTL_MS
+        value: "604800000"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DB_PATH
+        value: "/opt/render/project/data/jeu.sqlite"
