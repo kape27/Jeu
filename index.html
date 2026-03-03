@@ -5178,6 +5178,8 @@
         const HEARTBEAT_INTERVAL = 6000;
         const HEARTBEAT_TIMEOUT = 20000;
         const SIGNALING_CONNECT_TIMEOUT = 12000;
+        const SIGNALING_CONNECT_RETRIES = 3;
+        const SIGNALING_RETRY_DELAY_MS = 1400;
         const WEBRTC_CONNECT_TIMEOUT = 30000;
         const WEBRTC_HOST_WAIT_TIMEOUT = 180000;
         const WEBRTC_JOIN_WAIT_TIMEOUT = 60000;
@@ -7608,7 +7610,11 @@
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
                 return publicFallback;
             }
-            if (hostname.endsWith('.netlify.app') || hostname.endsWith('.vercel.app')) {
+            if (
+                hostname.endsWith('.netlify.app') ||
+                hostname.endsWith('.vercel.app') ||
+                hostname.endsWith('.github.io')
+            ) {
                 return publicFallback;
             }
             if (window.location?.host) {
@@ -7709,8 +7715,8 @@
             };
 
             addCandidateUrl(selectedUrl);
-            addCandidateUrl(getDefaultSignalingUrl());
             addCandidateUrl('wss://jeu-points.onrender.com/ws');
+            addCandidateUrl(getDefaultSignalingUrl());
             if ((window.location?.hostname || '') === 'localhost' || (window.location?.hostname || '') === '127.0.0.1') {
                 addCandidateUrl('ws://localhost:8080/ws');
             }
@@ -7720,39 +7726,54 @@
             let lastConnectError = null;
 
             for (const candidateUrl of candidateUrls) {
-                try {
-                    connectedSocket = await new Promise((resolve, reject) => {
-                        const socket = new WebSocket(candidateUrl);
-                        let settled = false;
-                        const timeoutId = setTimeout(() => {
-                            if (settled) return;
-                            settled = true;
-                            try {
-                                socket.close();
-                            } catch (_error) {
-                                // Ignore.
-                            }
-                            reject(createBluetoothError(`Delai de connexion depasse (${candidateUrl})`));
-                        }, SIGNALING_CONNECT_TIMEOUT);
+                for (let attempt = 1; attempt <= SIGNALING_CONNECT_RETRIES; attempt += 1) {
+                    try {
+                        connectedSocket = await new Promise((resolve, reject) => {
+                            const socket = new WebSocket(candidateUrl);
+                            let settled = false;
+                            const timeoutId = setTimeout(() => {
+                                if (settled) return;
+                                settled = true;
+                                try {
+                                    socket.close();
+                                } catch (_error) {
+                                    // Ignore.
+                                }
+                                reject(createBluetoothError(`Delai de connexion depasse (${candidateUrl})`));
+                            }, SIGNALING_CONNECT_TIMEOUT);
 
-                        socket.onopen = () => {
-                            if (settled) return;
-                            settled = true;
-                            clearTimeout(timeoutId);
-                            resolve(socket);
-                        };
+                            socket.onopen = () => {
+                                if (settled) return;
+                                settled = true;
+                                clearTimeout(timeoutId);
+                                resolve(socket);
+                            };
 
-                        socket.onerror = () => {
-                            if (settled) return;
-                            settled = true;
-                            clearTimeout(timeoutId);
-                            reject(createBluetoothError(`Connexion impossible (${candidateUrl})`));
-                        };
-                    });
-                    connectedUrl = candidateUrl;
+                            socket.onerror = () => {
+                                if (settled) return;
+                                settled = true;
+                                clearTimeout(timeoutId);
+                                reject(createBluetoothError(`Connexion impossible (${candidateUrl})`));
+                            };
+
+                            socket.onclose = () => {
+                                if (settled) return;
+                                settled = true;
+                                clearTimeout(timeoutId);
+                                reject(createBluetoothError(`Connexion fermee (${candidateUrl})`));
+                            };
+                        });
+                        connectedUrl = candidateUrl;
+                        break;
+                    } catch (error) {
+                        lastConnectError = error;
+                        if (attempt < SIGNALING_CONNECT_RETRIES) {
+                            await sleep(SIGNALING_RETRY_DELAY_MS * attempt);
+                        }
+                    }
+                }
+                if (connectedSocket) {
                     break;
-                } catch (error) {
-                    lastConnectError = error;
                 }
             }
 
