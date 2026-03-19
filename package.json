@@ -4,6 +4,9 @@
   "private": true,
   "description": "Serveur de signalisation WebRTC pour Jeu des Points",
   "main": "signaling-server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node signaling-server.js",
     "start:signaling": "node signaling-server.js",

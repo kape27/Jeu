@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { createCompetitionApiSupabase } = require('./competition-api-supabase');
 
 let DatabaseSync = null;
 
@@ -38,6 +37,7 @@ function createCompetitionApi(options) {
         if (!supabaseUrl || !supabaseServiceRoleKey) {
             throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must both be defined.');
         }
+        const { createCompetitionApiSupabase } = require('./competition-api-supabase');
         return createCompetitionApiSupabase({
             ...options,
             supabaseUrl,
