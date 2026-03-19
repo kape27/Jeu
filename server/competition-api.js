@@ -24,6 +24,14 @@ function createHttpError(status, message) {
 }
 
 function createCompetitionApi(options) {
+    // Priority: DATABASE_URL (Railway PostgreSQL) > Supabase > SQLite
+    const databaseUrl = String(options.databaseUrl || process.env.DATABASE_URL || '').trim();
+    if (databaseUrl) {
+        console.log('[API] DATABASE_URL detected, using PostgreSQL adapter (Railway).');
+        const { createCompetitionApiPg } = require('./competition-api-pg');
+        return createCompetitionApiPg({ ...options, databaseUrl });
+    }
+
     const supabaseUrl = String(options.supabaseUrl || process.env.SUPABASE_URL || '').trim();
     const supabaseServiceRoleKey = String(options.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
     if (supabaseUrl || supabaseServiceRoleKey) {

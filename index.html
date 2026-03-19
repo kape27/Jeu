@@ -1366,131 +1366,244 @@
 
         <!-- SCREEN 4.5: COMPETITION -->
         <div id="screenCompetition" class="relative z-10 flex flex-1 flex-col w-full h-full screen-hidden">
-            <header class="flex items-center p-4 pb-2 justify-between shrink-0 bg-background-light/90 dark:bg-background-dark/90 ios-blur z-20">
+            <!-- Premium Header with gradient -->
+            <header class="relative flex items-center p-4 pb-3 justify-between shrink-0 z-20 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-primary/10 to-violet-500/10 dark:from-amber-500/5 dark:via-primary/5 dark:to-violet-500/5"></div>
+                <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
                 <button onclick="navToScreen('screenMainMenu')"
-                    class="w-12 h-12 flex items-center justify-center bg-slate-200/50 dark:bg-slate-800/50 rounded-full transition-transform active:scale-95 text-slate-900 dark:text-white">
-                    <span class="material-symbols-outlined text-[24px]">arrow_back</span>
+                    class="relative w-11 h-11 flex items-center justify-center bg-white/60 dark:bg-slate-800/60 rounded-2xl transition-transform active:scale-95 text-slate-900 dark:text-white border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
+                    <span class="material-symbols-outlined text-[22px]">arrow_back</span>
                 </button>
-                <h1 class="text-base font-bold tracking-widest uppercase flex-1 text-center">Compétition</h1>
-                <div class="w-12 h-12"></div>
+                <div class="relative flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-amber-500 text-[22px]">trophy</span>
+                    <h1 class="text-sm font-black tracking-[0.2em] uppercase">Compétition</h1>
+                </div>
+                <div class="w-11 h-11"></div>
             </header>
 
-            <main class="flex-1 flex flex-col px-6 space-y-6 max-w-lg mx-auto w-full overflow-y-auto no-scrollbar pb-10 pt-4">
+            <main class="flex-1 flex flex-col px-5 space-y-5 max-w-lg mx-auto w-full overflow-y-auto no-scrollbar pb-10 pt-3">
                 <!-- Status bar -->
-                <div id="compStatus" class="text-center text-xs font-bold py-2 rounded-xl hidden"></div>
+                <div id="compStatus" class="text-center text-xs font-bold py-2.5 rounded-2xl hidden"></div>
 
-                <!-- Tabs -->
-                <div class="flex p-1 bg-slate-200/50 dark:bg-slate-800/80 rounded-2xl border border-slate-300 dark:border-slate-700/50 shadow-inner">
-                    <button onclick="switchCompTab('events')" id="btnTabEvents" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm">SALONS</button>
-                    <button onclick="switchCompTab('account')" id="btnTabAccount" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500">COMPTE</button>
-                    <button onclick="switchCompTab('stats')" id="btnTabStats" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500">STATS</button>
+                <!-- Premium Tabs with icons -->
+                <div class="flex p-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/40">
+                    <button onclick="switchCompTab('events')" id="btnTabEvents" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase">
+                        <span class="material-symbols-outlined text-[16px]">sports_esports</span>SALONS
+                    </button>
+                    <button onclick="switchCompTab('account')" id="btnTabAccount" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all text-slate-400 uppercase">
+                        <span class="material-symbols-outlined text-[16px]">person</span>COMPTE
+                    </button>
+                    <button onclick="switchCompTab('stats')" id="btnTabStats" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all text-slate-400 uppercase">
+                        <span class="material-symbols-outlined text-[16px]">bar_chart</span>STATS
+                    </button>
                 </div>
 
                 <!-- Tab content: EVENTS -->
-                <div id="tabEvents" class="comp-tab space-y-6">
+                <div id="tabEvents" class="comp-tab space-y-5">
                     <section class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Salons Publics</h3>
-                            <button onclick="refreshCompEvents()" class="size-8 flex items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:rotate-180 transition-transform">
+                            <div class="flex items-center gap-2">
+                                <div class="size-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                                <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">Salons Publics</h3>
+                            </div>
+                            <button onclick="refreshCompEvents()" class="size-9 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 active:rotate-180 transition-all duration-500 border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
                                 <span class="material-symbols-outlined text-[18px]">refresh</span>
                             </button>
                         </div>
                         <div id="compEventsList" class="space-y-3">
-                            <p class="text-center text-xs text-slate-500 py-10">Chargement des salons...</p>
+                            <div class="flex flex-col items-center justify-center py-12 opacity-50">
+                                <span class="material-symbols-outlined text-4xl mb-2 text-slate-300 dark:text-slate-600">sports_esports</span>
+                                <p class="text-xs text-slate-400 font-medium">Chargement des salons...</p>
+                            </div>
                         </div>
                     </section>
 
-                    <section class="p-5 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <h3 class="text-sm font-bold mb-4">Créer un salon</h3>
-                        <div class="space-y-3">
-                            <input id="newCompName" type="text" placeholder="Nom de la compétition" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
-                            <div class="grid grid-cols-2 gap-2">
-                                <select id="newCompMode" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-3 text-sm font-medium">
-                                    <option value="classic">Classic</option>
-                                    <option value="tempete">Tempête</option>
-                                    <option value="rapide">Rapide</option>
-                                </select>
-                                <input id="newCompMax" type="number" value="8" min="2" max="64" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                    <!-- Create Tournament Card -->
+                    <section class="relative p-6 rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-700/40 shadow-sm">
+                        <div class="absolute inset-0 bg-gradient-to-br from-white via-white to-primary/5 dark:from-slate-900/60 dark:via-slate-900/60 dark:to-primary/10"></div>
+                        <div class="relative space-y-4">
+                            <div class="flex items-center gap-2.5">
+                                <div class="size-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-primary text-[18px]">add_circle</span>
+                                </div>
+                                <h3 class="text-sm font-black tracking-tight">Créer un Salon</h3>
                             </div>
-                            <button onclick="createCompEvent()" class="w-full py-3 bg-primary text-white font-bold rounded-xl active:scale-95 transition-all text-sm uppercase tracking-wider">Créer le tournoi</button>
+                            <div class="space-y-3">
+                                <input id="newCompName" type="text" placeholder="Nom du tournoi" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="relative">
+                                        <label class="absolute -top-2 left-3 bg-white dark:bg-slate-800 px-1.5 text-[8px] font-black uppercase tracking-widest text-slate-400 z-10">Mode</label>
+                                        <select id="newCompMode" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                            <option value="classic">⚡ Classic</option>
+                                            <option value="tempete">🌪️ Tempête</option>
+                                            <option value="rapide">🚀 Rapide</option>
+                                        </select>
+                                    </div>
+                                    <div class="relative">
+                                        <label class="absolute -top-2 left-3 bg-white dark:bg-slate-800 px-1.5 text-[8px] font-black uppercase tracking-widest text-slate-400 z-10">Joueurs</label>
+                                        <input id="newCompMax" type="number" value="8" min="2" max="64" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                    </div>
+                                </div>
+                                <button onclick="createCompEvent()" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 text-white font-black rounded-2xl active:scale-[0.98] transition-all text-xs uppercase tracking-[0.2em] shadow-lg shadow-primary/25 border border-primary/20">
+                                    <span class="flex items-center justify-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+                                        Créer le Tournoi
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </section>
                 </div>
 
                 <!-- Tab content: ACCOUNT -->
-                <div id="tabAccount" class="comp-tab hidden space-y-6">
-                    <section class="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <div id="compUserInfo" class="hidden space-y-6">
-                            <!-- Profile Header -->
-                            <div class="flex items-center gap-5 border-b border-slate-100 dark:border-slate-800 pb-6">
-                                <div id="compAvatarContainer" class="relative group">
-                                    <div id="compAvatarImg" class="size-20 rounded-3xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105">
-                                         <span class="material-symbols-outlined text-4xl opacity-30">person</span>
+                <div id="tabAccount" class="comp-tab hidden space-y-5">
+                    <!-- Logged-In Profile View -->
+                    <section class="relative p-6 rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-700/40 shadow-sm">
+                        <div class="absolute inset-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/60 dark:to-slate-800/30"></div>
+                        <div id="compUserInfo" class="hidden relative space-y-6">
+                            <!-- Profile Card -->
+                            <div class="flex items-center gap-5">
+                                <div id="compAvatarContainer" class="relative group cursor-pointer" onclick="toggleCompProfileEdit()">
+                                    <div id="compAvatarImg" class="size-[72px] rounded-[20px] bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center overflow-hidden ring-2 ring-white dark:ring-slate-700 shadow-lg transition-transform group-hover:scale-105">
+                                         <span class="material-symbols-outlined text-4xl text-primary/40">person</span>
                                     </div>
-                                    <div class="absolute -bottom-1 -right-1 size-7 bg-primary text-white rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-md">
-                                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                                    <div class="absolute -bottom-1 -right-1 size-7 bg-gradient-to-br from-primary to-blue-600 text-white rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-800 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span class="material-symbols-outlined text-[14px]">edit</span>
                                     </div>
                                 </div>
-                                <div class="flex-1">
-                                    <h4 id="compUserName" class="text-xl font-black tracking-tight">Pseudo</h4>
-                                    <p id="compUserEmail" class="text-xs text-slate-500 font-medium opacity-80">email@example.com</p>
-                                    <div class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider">Joueur Vérifié</div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 id="compUserName" class="text-lg font-black tracking-tight truncate">Pseudo</h4>
+                                    <p id="compUserEmail" class="text-[11px] text-slate-400 font-medium truncate">email@example.com</p>
+                                    <div class="mt-1.5 flex items-center gap-2">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[9px] font-black uppercase tracking-wider">
+                                            <span class="material-symbols-outlined text-[10px] mr-0.5">verified</span>Vérifié
+                                        </span>
+                                        <span id="compUserRankBadge" class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase tracking-wider">
+                                            <span class="material-symbols-outlined text-[10px] mr-0.5">star</span>Bronze
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Inline Stats Summary -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="py-3 px-2 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40 text-center">
+                                    <p class="text-lg font-black text-primary" id="compProfileElo">1200</p>
+                                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">ELO</p>
+                                </div>
+                                <div class="py-3 px-2 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40 text-center">
+                                    <p class="text-lg font-black text-emerald-500" id="compProfileWins">0</p>
+                                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">VICTOIRES</p>
+                                </div>
+                                <div class="py-3 px-2 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40 text-center">
+                                    <p class="text-lg font-black" id="compProfileGames">0</p>
+                                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">PARTIES</p>
                                 </div>
                             </div>
 
                             <!-- Profile Edit Form (Hidden by default) -->
-                            <div id="compProfileEditForm" class="hidden p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-4">
-                                <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Modifier mon Profil</h5>
+                            <div id="compProfileEditForm" class="hidden space-y-4 pt-2">
+                                <div class="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent"></div>
+                                <h5 class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px]">tune</span>Modifier mon Profil
+                                </h5>
                                 <div class="space-y-3">
-                                    <div>
-                                        <label class="text-[9px] font-bold uppercase tracking-wider ml-1 mb-1 block opacity-50">Pseudo</label>
-                                        <input id="editCompPseudo" type="text" placeholder="Nouveau pseudo" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                                    <div class="relative">
+                                        <label class="absolute -top-2 left-3 bg-white dark:bg-slate-800 px-1.5 text-[8px] font-black uppercase tracking-widest text-slate-400 z-10">Pseudo</label>
+                                        <input id="editCompPseudo" type="text" placeholder="Nouveau pseudo" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
                                     </div>
-                                    <div>
-                                        <label class="text-[9px] font-bold uppercase tracking-wider ml-1 mb-1 block opacity-50">URL de l'Avatar</label>
-                                        <input id="editCompAvatar" type="url" placeholder="https://..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                                    <div class="relative">
+                                        <label class="absolute -top-2 left-3 bg-white dark:bg-slate-800 px-1.5 text-[8px] font-black uppercase tracking-widest text-slate-400 z-10">Avatar URL</label>
+                                        <input id="editCompAvatar" type="url" placeholder="https://example.com/photo.jpg" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
                                     </div>
-                                    <div class="grid grid-cols-2 gap-3 pt-2">
-                                        <button onclick="toggleCompProfileEdit()" class="py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-[10px] uppercase tracking-wider active:scale-95 transition-all">Annuler</button>
-                                        <button onclick="handleCompProfileUpdate()" class="py-2.5 bg-primary text-white font-bold rounded-xl text-[10px] uppercase tracking-wider active:scale-95 transition-all shadow-md shadow-primary/20">Enregistrer</button>
+                                    <div class="flex gap-3 pt-1">
+                                        <button onclick="toggleCompProfileEdit()" class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl text-[10px] uppercase tracking-wider active:scale-[0.98] transition-all border border-slate-200/50 dark:border-slate-700/50">Annuler</button>
+                                        <button onclick="handleCompProfileUpdate()" class="flex-1 py-3 bg-gradient-to-r from-primary to-blue-600 text-white font-bold rounded-2xl text-[10px] uppercase tracking-wider active:scale-[0.98] transition-all shadow-md shadow-primary/20">Enregistrer</button>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Profile Actions -->
-                            <div id="compProfileActions" class="space-y-3">
-                                <button onclick="toggleCompProfileEdit()" class="w-full py-3.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs uppercase tracking-widest border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 active:scale-95 transition-all">
-                                    <span class="material-symbols-outlined text-[18px]">manage_accounts</span>
+                            <div id="compProfileActions" class="space-y-2.5">
+                                <button onclick="toggleCompProfileEdit()" class="w-full py-3.5 bg-white/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold rounded-2xl text-[11px] uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+                                    <span class="material-symbols-outlined text-[16px]">edit</span>
                                     Éditer le profil
                                 </button>
-                                <button onclick="handleCompLogout()" class="w-full py-3.5 bg-red-500/5 text-red-500 font-bold rounded-xl text-xs uppercase tracking-widest border border-red-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all">
-                                    <span class="material-symbols-outlined text-[18px]">logout</span>
+                                <button onclick="handleCompLogout()" class="w-full py-3.5 bg-red-500/5 text-red-400 font-bold rounded-2xl text-[11px] uppercase tracking-widest border border-red-500/15 flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-red-500/10">
+                                    <span class="material-symbols-outlined text-[16px]">logout</span>
                                     Déconnexion
                                 </button>
                             </div>
                         </div>
 
-                        <div id="compLoginForm" class="space-y-4">
-                            <div class="flex items-center justify-between gap-4 mb-2">
-                                <h3 id="compAuthTitle" class="text-sm font-bold opacity-60 uppercase tracking-widest">Connexion</h3>
-                                <button onclick="toggleCompAuthMode()" id="compAuthToggleBtn" class="text-[10px] font-bold text-primary uppercase tracking-wider hover:underline">Pas de compte ? S'inscrire</button>
+                        <!-- Login/Register Form -->
+                        <div id="compLoginForm" class="relative space-y-5">
+                            <!-- Auth Header -->
+                            <div class="text-center space-y-2">
+                                <div class="size-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center mb-3">
+                                    <span class="material-symbols-outlined text-primary text-[28px]">shield_person</span>
+                                </div>
+                                <h3 id="compAuthTitle" class="text-lg font-black tracking-tight">Connexion</h3>
+                                <p class="text-[11px] text-slate-400 font-medium">Connectez-vous pour rejoindre les compétitions</p>
                             </div>
-                            
+
+                            <!-- Registration Pseudo Field -->
                             <div id="compPseudoGroup" class="hidden">
-                                <input id="compPseudo" type="text" placeholder="Pseudo" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                                <div class="relative">
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">badge</span>
+                                    <input id="compPseudo" type="text" placeholder="Choisir un pseudo" minlength="2" maxlength="20" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 pl-11 pr-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                </div>
                             </div>
-                            
-                            <input id="compEmail" type="email" placeholder="Email" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
-                            <input id="compPass" type="password" placeholder="Mot de passe" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
-                            
-                            <button id="compAuthSubmitBtn" onclick="handleCompAuthSubmit()" class="w-full py-4 bg-primary text-white font-bold rounded-xl text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg shadow-primary/20">Se Connecter</button>
-                            <div class="flex items-center gap-2 py-2">
-                                <div class="h-px flex-1 bg-slate-100 dark:bg-slate-800"></div>
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ou avec</span>
-                                <div class="h-px flex-1 bg-slate-100 dark:bg-slate-800"></div>
+
+                            <!-- Email Field -->
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">mail</span>
+                                <input id="compEmail" type="email" placeholder="Adresse email" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 pl-11 pr-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
                             </div>
-                            <button onclick="handleCompOAuth('google')" class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 active:scale-95 transition-all">
-                                <svg class="size-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+
+                            <!-- Password Field -->
+                            <div class="space-y-2">
+                                <div class="relative">
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">lock</span>
+                                    <input id="compPass" type="password" placeholder="Mot de passe" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 pl-11 pr-12 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none" oninput="updatePasswordStrength(this.value)">
+                                    <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 size-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
+                                        <span id="compPassToggleIcon" class="material-symbols-outlined text-[18px]">visibility_off</span>
+                                    </button>
+                                </div>
+                                <!-- Password Strength Bar (only in register mode) -->
+                                <div id="compPassStrength" class="hidden space-y-1">
+                                    <div class="flex gap-1">
+                                        <div id="passStr1" class="h-1 flex-1 rounded-full bg-slate-200 dark:bg-slate-700 transition-colors"></div>
+                                        <div id="passStr2" class="h-1 flex-1 rounded-full bg-slate-200 dark:bg-slate-700 transition-colors"></div>
+                                        <div id="passStr3" class="h-1 flex-1 rounded-full bg-slate-200 dark:bg-slate-700 transition-colors"></div>
+                                        <div id="passStr4" class="h-1 flex-1 rounded-full bg-slate-200 dark:bg-slate-700 transition-colors"></div>
+                                    </div>
+                                    <p id="passStrLabel" class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Force du mot de passe</p>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button id="compAuthSubmitBtn" onclick="handleCompAuthSubmit()" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 text-white font-black rounded-2xl text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all shadow-lg shadow-primary/25 border border-primary/20 flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-[18px]">login</span>
+                                Se Connecter
+                            </button>
+
+                            <!-- Toggle Link -->
+                            <p class="text-center text-[11px] text-slate-400">
+                                <span id="compAuthToggleText">Pas encore de compte ?</span>
+                                <button onclick="toggleCompAuthMode()" id="compAuthToggleBtn" class="font-bold text-primary hover:underline ml-1">S'inscrire</button>
+                            </p>
+
+                            <!-- Divider -->
+                            <div class="flex items-center gap-3">
+                                <div class="h-px flex-1 bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-700"></div>
+                                <span class="text-[9px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">ou</span>
+                                <div class="h-px flex-1 bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-700"></div>
+                            </div>
+
+                            <!-- OAuth -->
+                            <button onclick="handleCompOAuth('google')" class="w-full py-3.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold rounded-2xl text-[11px] flex items-center justify-center gap-2.5 border border-slate-200 dark:border-slate-700 active:scale-[0.98] transition-all hover:shadow-md">
+                                <svg class="size-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                                 Continuer avec Google
                             </button>
                         </div>
@@ -1498,22 +1611,77 @@
                 </div>
 
                 <!-- Tab content: STATS -->
-                <div id="tabStats" class="comp-tab hidden space-y-6">
-                    <section class="grid grid-cols-2 gap-4">
-                        <div class="p-6 rounded-3xl bg-primary/10 border border-primary/20 text-center">
-                            <p class="text-[10px] font-black tracking-widest uppercase text-primary mb-1">Cote ELO</p>
-                            <h4 id="compUserElo" class="text-3xl font-black text-slate-900 dark:text-white">1200</h4>
+                <div id="tabStats" class="comp-tab hidden space-y-5">
+                    <!-- Top Stats Cards -->
+                    <section class="grid grid-cols-2 gap-3">
+                        <div class="relative p-5 rounded-3xl overflow-hidden border border-primary/20 text-center">
+                            <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-blue-500/5"></div>
+                            <div class="relative">
+                                <span class="material-symbols-outlined text-primary/40 text-[20px] mb-1">trending_up</span>
+                                <h4 id="compUserElo" class="text-3xl font-black text-slate-900 dark:text-white">1200</h4>
+                                <p class="text-[9px] font-black tracking-[0.15em] uppercase text-primary mt-1">Cote ELO</p>
+                            </div>
                         </div>
-                        <div class="p-6 rounded-3xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-center">
-                            <p class="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1">Winrate</p>
-                            <h4 id="compUserWinrate" class="text-3xl font-black text-slate-900 dark:text-white">0%</h4>
+                        <div class="relative p-5 rounded-3xl overflow-hidden border border-emerald-500/20 text-center">
+                            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-green-500/5"></div>
+                            <div class="relative">
+                                <span class="material-symbols-outlined text-emerald-500/40 text-[20px] mb-1">percent</span>
+                                <h4 id="compUserWinrate" class="text-3xl font-black text-slate-900 dark:text-white">0%</h4>
+                                <p class="text-[9px] font-black tracking-[0.15em] uppercase text-emerald-500 mt-1">Winrate</p>
+                            </div>
                         </div>
                     </section>
 
-                    <section class="p-5 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
-                        <h3 class="text-sm font-bold mb-4">Historique Récent</h3>
-                        <div id="compHistoryList" class="space-y-2">
-                             <p class="text-center text-xs text-slate-500 py-4">Aucune partie terminée.</p>
+                    <!-- Progress Section -->
+                    <section class="relative p-5 rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-700/40 shadow-sm">
+                        <div class="absolute inset-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/60 dark:to-slate-800/30"></div>
+                        <div class="relative space-y-4">
+                            <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[14px]">military_tech</span>Progression
+                            </h3>
+                            <!-- Rank Progress Bar -->
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] font-black uppercase tracking-wider text-amber-500">Bronze</span>
+                                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Argent</span>
+                                </div>
+                                <div class="h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                    <div id="compRankProgress" class="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-700" style="width: 0%"></div>
+                                </div>
+                                <p id="compRankProgressText" class="text-[9px] text-slate-400 font-bold text-right">0 / 1400 ELO</p>
+                            </div>
+
+                            <!-- Detailed Stats -->
+                            <div class="grid grid-cols-3 gap-2 pt-2">
+                                <div class="py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/30 text-center border border-slate-100/50 dark:border-slate-700/30">
+                                    <p id="compStatGames" class="text-base font-black">0</p>
+                                    <p class="text-[7px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Parties</p>
+                                </div>
+                                <div class="py-2.5 rounded-xl bg-emerald-500/5 text-center border border-emerald-500/10">
+                                    <p id="compStatWins" class="text-base font-black text-emerald-500">0</p>
+                                    <p class="text-[7px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Victoires</p>
+                                </div>
+                                <div class="py-2.5 rounded-xl bg-red-500/5 text-center border border-red-500/10">
+                                    <p id="compStatLosses" class="text-base font-black text-red-400">0</p>
+                                    <p class="text-[7px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Défaites</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Match History -->
+                    <section class="relative p-5 rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-700/40 shadow-sm">
+                        <div class="absolute inset-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/60 dark:to-slate-800/30"></div>
+                        <div class="relative">
+                            <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 mb-4">
+                                <span class="material-symbols-outlined text-[14px]">history</span>Historique Récent
+                            </h3>
+                            <div id="compHistoryList" class="space-y-2">
+                                <div class="flex flex-col items-center justify-center py-8 opacity-50">
+                                    <span class="material-symbols-outlined text-3xl mb-2 text-slate-300 dark:text-slate-600">sports_score</span>
+                                    <p class="text-[11px] text-slate-400 font-medium">Aucune partie terminée</p>
+                                </div>
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -1521,7 +1689,7 @@
                 <!-- Detail Modal (Floating over tabs) -->
                 <div id="compEventDetail" class="hidden fixed inset-0 z-40 bg-background-light dark:bg-background-dark p-6 overflow-y-auto no-scrollbar">
                      <div class="max-w-md mx-auto relative h-full flex flex-col pt-12">
-                         <button onclick="closeCompDetail()" class="absolute left-0 top-0 size-11 flex items-center justify-center rounded-full bg-slate-200/50 dark:bg-slate-800/50 active:scale-95 transition-all">
+                         <button onclick="closeCompDetail()" class="absolute left-0 top-0 size-11 flex items-center justify-center rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 active:scale-95 transition-all border border-slate-200/50 dark:border-slate-700/50">
                              <span class="material-symbols-outlined text-[20px]">close</span>
                          </button>
                          <div id="compDetailContent" class="flex-1 space-y-6">
@@ -1532,8 +1700,8 @@
                              </div>
 
                              <div class="grid grid-cols-2 gap-2">
-                                 <button id="btnJoinComp" onclick="joinTargetComp()" class="py-3.5 bg-primary text-white font-bold rounded-2xl active:scale-95 transition-all text-xs uppercase tracking-widest">Rejoindre</button>
-                                 <button id="btnLeaveComp" onclick="leaveTargetComp()" class="py-3.5 bg-slate-200 dark:bg-slate-800 font-bold rounded-2xl active:scale-95 transition-all text-xs uppercase tracking-widest">Quitter</button>
+                                 <button id="btnJoinComp" onclick="joinTargetComp()" class="py-3.5 bg-gradient-to-r from-primary to-blue-600 text-white font-bold rounded-2xl active:scale-95 transition-all text-xs uppercase tracking-widest shadow-md shadow-primary/20">Rejoindre</button>
+                                 <button id="btnLeaveComp" onclick="leaveTargetComp()" class="py-3.5 bg-slate-200 dark:bg-slate-800 font-bold rounded-2xl active:scale-95 transition-all text-xs uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50">Quitter</button>
                              </div>
 
                              <div class="space-y-4 pt-4">
@@ -1547,7 +1715,7 @@
                              </div>
 
                              <div class="pt-6">
-                                 <button id="btnStartComp" onclick="startTargetComp()" class="hidden w-full py-4 bg-emerald-500 text-white font-black rounded-2xl active:scale-95 transition-all text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/20">Lancer la compétition</button>
+                                 <button id="btnStartComp" onclick="startTargetComp()" class="hidden w-full py-4 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-black rounded-2xl active:scale-95 transition-all text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/25 border border-emerald-400/20">Lancer la compétition</button>
                              </div>
                          </div>
                      </div>
@@ -10536,15 +10704,21 @@
             document.querySelectorAll('.comp-tab').forEach(t => t.classList.add('hidden'));
             const content = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
             if(content) content.classList.remove('hidden');
-            const tabs = ['events', 'account', 'stats'];
-            tabs.forEach(t => {
+            const tabConfig = {
+                events: { icon: 'sports_esports', label: 'SALONS' },
+                account: { icon: 'person', label: 'COMPTE' },
+                stats: { icon: 'bar_chart', label: 'STATS' }
+            };
+            Object.keys(tabConfig).forEach(t => {
                 const btn = document.getElementById('btnTab' + t.charAt(0).toUpperCase() + t.slice(1));
                 if (btn) {
+                    const cfg = tabConfig[t];
                     if (t === tabId) {
-                        btn.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm";
+                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase";
                     } else {
-                        btn.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500";
+                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all text-slate-400 uppercase";
                     }
+                    btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">${cfg.icon}</span>${cfg.label}`;
                 }
             });
             if (tabId === 'account' || tabId === 'stats') refreshCompProfile();
@@ -10562,14 +10736,22 @@
 
             if (isRegisterMode) {
                 if(title) title.textContent = "Inscription";
-                if(toggleBtn) toggleBtn.textContent = "Déjà un compte ? Connexion";
+                if(toggleBtn) toggleBtn.textContent = "Connexion";
                 if(pseudoGroup) pseudoGroup.classList.remove('hidden');
-                if(submitBtn) submitBtn.textContent = "Créer mon Compte";
+                if(submitBtn) submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">person_add</span>Créer mon Compte';
+                const toggleText = document.getElementById('compAuthToggleText');
+                if(toggleText) toggleText.textContent = 'Déjà un compte ?';
+                const passStrength = document.getElementById('compPassStrength');
+                if(passStrength) passStrength.classList.remove('hidden');
             } else {
                 if(title) title.textContent = "Connexion";
-                if(toggleBtn) toggleBtn.textContent = "Pas de compte ? S'inscrire";
+                if(toggleBtn) toggleBtn.textContent = "S'inscrire";
                 if(pseudoGroup) pseudoGroup.classList.add('hidden');
-                if(submitBtn) submitBtn.textContent = "Se Connecter";
+                if(submitBtn) submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">login</span>Se Connecter';
+                const toggleText = document.getElementById('compAuthToggleText');
+                if(toggleText) toggleText.textContent = 'Pas encore de compte ?';
+                const passStrength = document.getElementById('compPassStrength');
+                if(passStrength) passStrength.classList.add('hidden');
             }
         }
 
@@ -10652,14 +10834,88 @@
                     if (compUser.avatarUrl) {
                         avatarImg.innerHTML = `<img src="${compUser.avatarUrl}" class="size-full object-cover">`;
                     } else {
-                        avatarImg.innerHTML = `<span class="material-symbols-outlined text-4xl opacity-30">person</span>`;
+                        avatarImg.innerHTML = `<span class="material-symbols-outlined text-4xl text-primary/40">person</span>`;
                     }
                 }
                 const stats = res.stats || res.user || {};
-                const elo = document.getElementById('compUserElo'); if(elo) elo.textContent = stats.elo || 1200;
-                const wr = document.getElementById('compUserWinrate'); if(wr) wr.textContent = (stats.winRate || 0) + '%';
+                const elo = stats.elo || 1200;
+                const wins = stats.wins || stats.wins_total || 0;
+                const losses = stats.losses || stats.losses_total || 0;
+                const games = stats.gamesPlayed || stats.games_played || 0;
+                const winRate = stats.winRate || (games > 0 ? Math.round(wins / games * 100) : 0);
+
+                // Stats tab
+                const eloEl = document.getElementById('compUserElo'); if(eloEl) eloEl.textContent = elo;
+                const wrEl = document.getElementById('compUserWinrate'); if(wrEl) wrEl.textContent = winRate + '%';
+                const sgEl = document.getElementById('compStatGames'); if(sgEl) sgEl.textContent = games;
+                const swEl = document.getElementById('compStatWins'); if(swEl) swEl.textContent = wins;
+                const slEl = document.getElementById('compStatLosses'); if(slEl) slEl.textContent = losses;
+
+                // Profile inline stats
+                const peEl = document.getElementById('compProfileElo'); if(peEl) peEl.textContent = elo;
+                const pwEl = document.getElementById('compProfileWins'); if(pwEl) pwEl.textContent = wins;
+                const pgEl = document.getElementById('compProfileGames'); if(pgEl) pgEl.textContent = games;
+
+                // Rank badge & progress
+                updateRankDisplay(elo);
             } catch (err) { console.error(err); }
         }
+
+        function updateRankDisplay(elo) {
+            const ranks = [
+                { name: 'Bronze', min: 0, max: 1400, color: 'amber-500', icon: 'star' },
+                { name: 'Argent', min: 1400, max: 1600, color: 'slate-400', icon: 'star' },
+                { name: 'Or', min: 1600, max: 1800, color: 'yellow-500', icon: 'military_tech' },
+                { name: 'Platine', min: 1800, max: 2000, color: 'cyan-400', icon: 'military_tech' },
+                { name: 'Diamant', min: 2000, max: 2500, color: 'blue-400', icon: 'diamond' },
+                { name: 'Maître', min: 2500, max: 9999, color: 'purple-500', icon: 'workspace_premium' }
+            ];
+            const rank = ranks.find(r => elo >= r.min && elo < r.max) || ranks[0];
+            const nextRank = ranks[ranks.indexOf(rank) + 1] || rank;
+            const progress = rank === nextRank ? 100 : Math.min(100, Math.round((elo - rank.min) / (rank.max - rank.min) * 100));
+
+            const badge = document.getElementById('compUserRankBadge');
+            if(badge) {
+                badge.className = `inline-flex items-center px-2 py-0.5 rounded-md bg-${rank.color}/10 text-${rank.color} text-[9px] font-black uppercase tracking-wider`;
+                badge.innerHTML = `<span class="material-symbols-outlined text-[10px] mr-0.5">${rank.icon}</span>${rank.name}`;
+            }
+
+            const bar = document.getElementById('compRankProgress');
+            if(bar) bar.style.width = progress + '%';
+
+            const text = document.getElementById('compRankProgressText');
+            if(text) text.textContent = `${elo} / ${rank.max} ELO`;
+        }
+
+        window.updatePasswordStrength = function(password) {
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[^A-Za-z0-9]/.test(password)) score++;
+
+            const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500'];
+            const labels = ['Très faible', 'Faible', 'Moyen', 'Fort'];
+            const base = 'bg-slate-200 dark:bg-slate-700';
+
+            for (let i = 1; i <= 4; i++) {
+                const bar = document.getElementById('passStr' + i);
+                if(bar) bar.className = `h-1 flex-1 rounded-full transition-colors ${i <= score ? colors[score - 1] : base}`;
+            }
+            const label = document.getElementById('passStrLabel');
+            if(label) label.textContent = password ? labels[Math.max(0, score - 1)] || 'Très faible' : 'Force du mot de passe';
+        }
+
+        window.togglePasswordVisibility = function() {
+            const input = document.getElementById('compPass');
+            const icon = document.getElementById('compPassToggleIcon');
+            if(input && icon) {
+                const isPassword = input.type === 'password';
+                input.type = isPassword ? 'text' : 'password';
+                icon.textContent = isPassword ? 'visibility' : 'visibility_off';
+            }
+        }
+
 
 
         window.refreshCompEvents = async function() {
