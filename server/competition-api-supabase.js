@@ -2,6 +2,8 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const EVENT_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const ROLE_SET = new Set(['player', 'organizer', 'admin']);
+const OAUTH_PROVIDERS = new Set(['google', 'apple']);
 
 function clampNumber(value, min, max) {
     if (!Number.isFinite(value)) return min;
@@ -21,6 +23,56 @@ function createHttpError(status, message) {
 function normalizeRelation(value) {
     if (Array.isArray(value)) return value[0] || null;
     return value || null;
+}
+
+function sanitizeCountryCode(raw) {
+    return String(raw || '')
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z]/g, '')
+        .slice(0, 2);
+}
+
+function sanitizeAvatarUrl(raw) {
+    const value = String(raw || '').trim().slice(0, 512);
+    if (!value) return '';
+    try {
+        const parsed = new URL(value);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return parsed.toString();
+        }
+    } catch (_error) {
+        return '';
+    }
+    return '';
+}
+
+function levelFromElo(elo) {
+    const normalizedElo = Number.isFinite(elo) ? elo : 1200;
+    return Math.max(1, Math.floor((normalizedElo - 800) / 120) + 1);
+}
+
+function winRatePercent(wins, gamesPlayed) {
+    const g = Math.max(0, Number(gamesPlayed || 0));
+    if (g === 0) return 0;
+    const w = Math.max(0, Number(wins || 0));
+    return Math.round((w / g) * 10000) / 100;
+}
+
+function sanitizeRole(raw) {
+    const role = String(raw || '').trim().toLowerCase();
+    if (ROLE_SET.has(role)) return role;
+    return 'player';
+}
+
+function computeEloDelta(winnerEloRaw, loserEloRaw, kFactor = 24) {
+    const winnerElo = Number.isFinite(winnerEloRaw) ? winnerEloRaw : 1200;
+    const loserElo = Number.isFinite(loserEloRaw) ? loserEloRaw : 1200;
+    const expectedWinner = 1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
+    const expectedLoser = 1 - expectedWinner;
+    const winnerDelta = Math.round(kFactor * (1 - expectedWinner));
+    const loserDelta = Math.round(kFactor * (0 - expectedLoser));
+    return { winnerDelta, loserDelta };
 }
 
 function createCompetitionApiSupabase(options) {
@@ -226,14 +278,145 @@ function createCompetitionApiSupabase(options) {
     }
 
     function toSafeUser(userRow) {
+        const gamesPlayed = Number(userRow.games_played || 0);
+        const winsTotal = Number(userRow.wins_total || 0);
+        const lossesTotal = Number(userRow.losses_total || 0);
+        const elo = Number(userRow.elo || 1200);
+        const level = Number(userRow.level || levelFromElo(elo));
         return {
             id: Number(userRow.id),
             email: String(userRow.email || ''),
             pseudo: String(userRow.pseudo || ''),
-            role: String(userRow.role || 'player'),
+            role: sanitizeRole(userRow.role),
+            avatarUrl: String(userRow.avatar_url || ''),
+            country: String(userRow.country_code || ''),
+            level,
+            elo,
+            gamesPlayed,
+            wins: winsTotal,
+            losses: lossesTotal,
+            winRate: winRatePercent(winsTotal, gamesPlayed),
+            authProvider: String(userRow.auth_provider || 'password'),
             createdAt: Number(userRow.created_at || nowMs())
         };
     }
+
+    async function getUserById(userId) {
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, created_at')
+            .eq('id', userId)
+            .maybeSingle();
+        if (error) throw error;
+        return data || null;
+    }
+
+    async function getUserByEmail(email) {
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, auth_provider_user_id, created_at')
+            .eq('email', email)
+            .maybeSingle();
+        if (error) throw error;
+        return data || null;
+    }
+
+    async function getUserByOAuthProvider(provider, providerUserId) {
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, auth_provider_user_id, created_at')
+            .eq('auth_provider', provider)
+            .eq('auth_provider_user_id', providerUserId)
+            .maybeSingle();
+        if (error) throw error;
+        return data || null;
+    }
+
+    async function ensureUniquePseudo(initialPseudo) {
+        const base = sanitizePseudo(initialPseudo) || `joueur${crypto.randomInt(1000, 9999)}`;
+        let candidate = base;
+        for (let attempt = 0; attempt < 50; attempt += 1) {
+            const { data, error } = await supabase
+                .from('users')
+                .select('id')
+                .eq('pseudo', candidate)
+                .maybeSingle();
+            if (error) throw error;
+            if (!data) return candidate;
+            candidate = `${base.slice(0, 18)}${crypto.randomInt(10, 99)}`;
+        }
+        return `${base.slice(0, 16)}${Date.now().toString().slice(-4)}`;
+    }
+
+    async function getUserMatchHistory(userId, limitRaw = 20) {
+        const limit = clampNumber(Number.parseInt(limitRaw, 10), 1, 100);
+        const { data, error } = await supabase
+            .from('matches')
+            .select('id, event_id, round_number, slot_index, player_a_user_id, player_b_user_id, winner_user_id, score_a, score_b, updated_at')
+            .or(`player_a_user_id.eq.${userId},player_b_user_id.eq.${userId}`)
+            .eq('status', 'completed')
+            .order('updated_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+
+        const rows = data || [];
+        const eventIds = Array.from(new Set(rows.map((row) => Number(row.event_id)).filter(Boolean)));
+        const userIds = Array.from(new Set(
+            rows.flatMap((row) => [row.player_a_user_id, row.player_b_user_id, row.winner_user_id])
+                .map((value) => (value == null ? null : Number(value)))
+                .filter((value) => value != null)
+        ));
+
+        const eventsMap = new Map();
+        if (eventIds.length > 0) {
+            const { data: eventRows, error: eventsError } = await supabase
+                .from('events')
+                .select('id, name, code')
+                .in('id', eventIds);
+            if (eventsError) throw eventsError;
+            for (const eventRow of (eventRows || [])) {
+                eventsMap.set(Number(eventRow.id), eventRow);
+            }
+        }
+
+        const usersMap = new Map();
+        if (userIds.length > 0) {
+            const { data: userRows, error: usersError } = await supabase
+                .from('users')
+                .select('id, pseudo')
+                .in('id', userIds);
+            if (usersError) throw usersError;
+            for (const userRow of (userRows || [])) {
+                usersMap.set(Number(userRow.id), String(userRow.pseudo || 'Joueur'));
+            }
+        }
+
+        return rows.map((row) => {
+            const playerA = row.player_a_user_id == null ? null : Number(row.player_a_user_id);
+            const playerB = row.player_b_user_id == null ? null : Number(row.player_b_user_id);
+            const winnerId = row.winner_user_id == null ? null : Number(row.winner_user_id);
+            const meIsA = playerA === Number(userId);
+            const meIsB = playerB === Number(userId);
+            const opponentId = meIsA ? playerB : (meIsB ? playerA : null);
+            const event = eventsMap.get(Number(row.event_id));
+            return {
+                matchId: Number(row.id),
+                eventId: Number(row.event_id),
+                eventCode: String(event?.code || ''),
+                eventName: String(event?.name || 'Evenement'),
+                round: Number(row.round_number || 0),
+                slot: Number(row.slot_index || 0),
+                playedAt: Number(row.updated_at || 0),
+                opponentUserId: opponentId,
+                opponentPseudo: opponentId == null ? 'BYE' : (usersMap.get(opponentId) || `Joueur #${opponentId}`),
+                result: winnerId === Number(userId) ? 'win' : 'loss',
+                scoreA: Number(row.score_a || 0),
+                scoreB: Number(row.score_b || 0),
+                winnerUserId: winnerId
+            };
+        });
+    }
+
 
     async function issueSessionToken(userId) {
         const token = crypto.randomBytes(32).toString('hex');
@@ -268,7 +451,7 @@ function createCompetitionApiSupabase(options) {
         const now = nowMs();
         const { data, error } = await supabase
             .from('sessions')
-            .select('token_hash, user_id, expires_at, user:users!sessions_user_id_fkey(id, email, pseudo, role, created_at)')
+            .select('token_hash, user_id, expires_at, user:users!sessions_user_id_fkey(id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, created_at)')
             .eq('token_hash', tokenHash)
             .maybeSingle();
         if (error) throw error;
@@ -485,6 +668,50 @@ function createCompetitionApiSupabase(options) {
         if (updateError) throw updateError;
     }
 
+    async function applyGlobalMatchResult(winnerUserId, loserUserId) {
+        if (!winnerUserId || !loserUserId) return;
+
+        const winner = await getUserById(winnerUserId);
+        const loser = await getUserById(loserUserId);
+        if (!winner || !loser) return;
+
+        const { winnerDelta, loserDelta } = computeEloDelta(
+            Number(winner.elo || 1200),
+            Number(loser.elo || 1200)
+        );
+
+        const winnerElo = Math.max(100, Number(winner.elo || 1200) + winnerDelta);
+        const loserElo = Math.max(100, Number(loser.elo || 1200) + loserDelta);
+        const winnerGames = Number(winner.games_played || 0) + 1;
+        const loserGames = Number(loser.games_played || 0) + 1;
+        const winnerWins = Number(winner.wins_total || 0) + 1;
+        const loserLosses = Number(loser.losses_total || 0) + 1;
+
+        const { error: winnerError } = await supabase
+            .from('users')
+            .update({
+                elo: winnerElo,
+                level: levelFromElo(winnerElo),
+                games_played: winnerGames,
+                wins_total: winnerWins,
+                updated_at: nowMs()
+            })
+            .eq('id', winnerUserId);
+        if (winnerError) throw winnerError;
+
+        const { error: loserError } = await supabase
+            .from('users')
+            .update({
+                elo: loserElo,
+                level: levelFromElo(loserElo),
+                games_played: loserGames,
+                losses_total: loserLosses,
+                updated_at: nowMs()
+            })
+            .eq('id', loserUserId);
+        if (loserError) throw loserError;
+    }
+
     function shuffleArray(values) {
         const output = [...values];
         for (let i = output.length - 1; i > 0; i -= 1) {
@@ -636,10 +863,19 @@ function createCompetitionApiSupabase(options) {
                 password_salt: saltHex,
                 pseudo,
                 role: 'player',
+                avatar_url: sanitizeAvatarUrl(body.avatarUrl),
+                country_code: sanitizeCountryCode(body.country),
+                level: 1,
+                elo: 1200,
+                games_played: 0,
+                wins_total: 0,
+                losses_total: 0,
+                auth_provider: 'password',
+                auth_provider_user_id: null,
                 created_at: now,
                 updated_at: now
             })
-            .select('id, email, pseudo, role, created_at')
+            .select('id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, created_at')
             .single();
         if (error) {
             if (isUniqueViolation(error)) {
@@ -667,7 +903,7 @@ function createCompetitionApiSupabase(options) {
 
         const { data: row, error } = await supabase
             .from('users')
-            .select('id, email, pseudo, role, created_at, password_hash, password_salt')
+            .select('id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, created_at, password_hash, password_salt')
             .eq('email', email)
             .maybeSingle();
         if (error) throw error;
@@ -695,6 +931,205 @@ function createCompetitionApiSupabase(options) {
         const { error } = await supabase.from('sessions').delete().eq('token_hash', tokenHash);
         if (error) throw error;
         sendJson(res, 200, { ok: true }, corsHeaders);
+    }
+
+    async function handleAuthOAuthMobile(req, res, corsHeaders, userIp) {
+        if (hitAuthRateLimit(userIp)) {
+            apiError(res, 429, 'Trop de tentatives. Reessayez plus tard.', corsHeaders);
+            return;
+        }
+        const body = await readJsonBody(req);
+        const provider = String(body.provider || '').trim().toLowerCase();
+        const accessToken = String(body.accessToken || body.access_token || '').trim();
+        const requestedPseudo = sanitizePseudo(body.pseudo);
+        const avatarUrl = sanitizeAvatarUrl(body.avatarUrl || body.avatar_url);
+        const countryCode = sanitizeCountryCode(body.country || body.countryCode || body.country_code);
+
+        if (!OAUTH_PROVIDERS.has(provider)) {
+            throw createHttpError(400, 'Provider OAuth non supporte.');
+        }
+        if (!accessToken) {
+            throw createHttpError(400, 'accessToken requis.');
+        }
+
+        const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+        if (authError) {
+            throw createHttpError(401, 'Token OAuth invalide.');
+        }
+        const authUser = authData?.user;
+        if (!authUser || !authUser.id) {
+            throw createHttpError(401, 'Utilisateur OAuth introuvable.');
+        }
+
+        const providerIdentity = (Array.isArray(authUser.identities) ? authUser.identities : [])
+            .find((identity) => String(identity?.provider || '').toLowerCase() === provider);
+        const providerUserId = String(providerIdentity?.id || authUser.id || '').trim();
+        const email = sanitizeEmail(authUser.email);
+        if (!email) {
+            throw createHttpError(400, 'Compte OAuth sans email.');
+        }
+
+        let user = await getUserByOAuthProvider(provider, providerUserId);
+        if (!user) {
+            user = await getUserByEmail(email);
+        }
+
+        if (!user) {
+            const pseudoFromMeta = sanitizePseudo(authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.user_metadata?.preferred_username);
+            const pseudo = await ensureUniquePseudo(requestedPseudo || pseudoFromMeta || email.split('@')[0] || 'joueur');
+            const generatedSecret = crypto.randomBytes(24).toString('hex');
+            const { saltHex, hashHex } = createPasswordHash(generatedSecret);
+            const now = nowMs();
+            const { data: inserted, error: insertError } = await supabase
+                .from('users')
+                .insert({
+                    email,
+                    password_hash: hashHex,
+                    password_salt: saltHex,
+                    pseudo,
+                    role: 'player',
+                    avatar_url: avatarUrl,
+                    country_code: countryCode,
+                    level: 1,
+                    elo: 1200,
+                    games_played: 0,
+                    wins_total: 0,
+                    losses_total: 0,
+                    auth_provider: provider,
+                    auth_provider_user_id: providerUserId,
+                    created_at: now,
+                    updated_at: now
+                })
+                .select('id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, auth_provider_user_id, created_at')
+                .single();
+            if (insertError) {
+                if (isUniqueViolation(insertError)) {
+                    throw createHttpError(409, 'Conflit de creation utilisateur OAuth.');
+                }
+                throw insertError;
+            }
+            user = inserted;
+        } else {
+            const updatePatch = {
+                updated_at: nowMs()
+            };
+            if (!user.auth_provider || user.auth_provider === 'password') {
+                updatePatch.auth_provider = provider;
+            }
+            if (!user.auth_provider_user_id) {
+                updatePatch.auth_provider_user_id = providerUserId;
+            }
+            if (!user.avatar_url && avatarUrl) {
+                updatePatch.avatar_url = avatarUrl;
+            }
+            if (!user.country_code && countryCode) {
+                updatePatch.country_code = countryCode;
+            }
+            if (Object.keys(updatePatch).length > 1) {
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update(updatePatch)
+                    .eq('id', user.id);
+                if (updateError) throw updateError;
+                user = await getUserById(user.id);
+            }
+        }
+
+        if (!user) {
+            throw createHttpError(500, 'Creation utilisateur OAuth impossible.');
+        }
+
+        const token = await issueSessionToken(user.id);
+        sendJson(res, 200, { ok: true, token, user: toSafeUser(user) }, corsHeaders);
+    }
+
+    async function handleProfileMe(req, res, corsHeaders, parsedUrl) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Session invalide.');
+        const historyLimit = parsedUrl.searchParams.get('historyLimit') || '20';
+        const history = await getUserMatchHistory(user.id, historyLimit);
+        sendJson(
+            res,
+            200,
+            {
+                ok: true,
+                user,
+                history,
+                stats: {
+                    gamesPlayed: user.gamesPlayed,
+                    wins: user.wins,
+                    losses: user.losses,
+                    winRate: user.winRate,
+                    elo: user.elo,
+                    level: user.level
+                }
+            },
+            corsHeaders
+        );
+    }
+
+    async function handleProfileUpdate(req, res, corsHeaders) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Session invalide.');
+
+        const body = await readJsonBody(req);
+        const patch = {};
+        if (typeof body.pseudo === 'string') {
+            const pseudo = sanitizePseudo(body.pseudo);
+            if (pseudo.length < 2) {
+                throw createHttpError(400, 'Pseudo invalide.');
+            }
+            patch.pseudo = pseudo;
+        }
+        if (typeof body.avatarUrl === 'string' || typeof body.avatar_url === 'string') {
+            patch.avatar_url = sanitizeAvatarUrl(body.avatarUrl || body.avatar_url);
+        }
+        if (typeof body.country === 'string' || typeof body.countryCode === 'string' || typeof body.country_code === 'string') {
+            patch.country_code = sanitizeCountryCode(body.country || body.countryCode || body.country_code);
+        }
+
+        if (Object.keys(patch).length === 0) {
+            throw createHttpError(400, 'Aucune modification fournie.');
+        }
+        patch.updated_at = nowMs();
+
+        const { error } = await supabase
+            .from('users')
+            .update(patch)
+            .eq('id', user.id);
+        if (error) {
+            if (isUniqueViolation(error)) {
+                throw createHttpError(409, 'Pseudo deja utilise.');
+            }
+            throw error;
+        }
+
+        const updated = await getUserById(user.id);
+        sendJson(res, 200, { ok: true, user: toSafeUser(updated) }, corsHeaders);
+    }
+
+    async function handleAdminUpdateRole(req, res, corsHeaders, userId) {
+        const requester = await requireUser(req);
+        if (!requester) throw createHttpError(401, 'Session invalide.');
+        if (requester.role !== 'admin') {
+            throw createHttpError(403, 'Action reservee aux admins.');
+        }
+
+        const body = await readJsonBody(req);
+        const role = sanitizeRole(body.role);
+        if (!ROLE_SET.has(role)) {
+            throw createHttpError(400, 'Role invalide.');
+        }
+
+        const { error } = await supabase
+            .from('users')
+            .update({ role, updated_at: nowMs() })
+            .eq('id', userId);
+        if (error) throw error;
+
+        const updated = await getUserById(userId);
+        if (!updated) throw createHttpError(404, 'Utilisateur introuvable.');
+        sendJson(res, 200, { ok: true, user: toSafeUser(updated) }, corsHeaders);
     }
 
     async function handleEventsList(res, corsHeaders, parsedUrl) {
@@ -901,6 +1336,7 @@ function createCompetitionApiSupabase(options) {
         await addPlayerStats(event.id, winnerUserId, { wins: 1, points: 3 });
         if (loserUserId != null) {
             await addPlayerStats(event.id, loserUserId, { losses: 1, points: 0 });
+            await applyGlobalMatchResult(winnerUserId, loserUserId);
         }
 
         await ensureCompetitionProgress(event.id);
@@ -937,12 +1373,31 @@ function createCompetitionApiSupabase(options) {
             await handleAuthLogin(req, res, corsHeaders, userIp);
             return;
         }
+        if (pathName === '/api/auth/oauth/mobile' && method === 'POST') {
+            await handleAuthOAuthMobile(req, res, corsHeaders, userIp);
+            return;
+        }
         if (pathName === '/api/auth/me' && method === 'GET') {
             await handleAuthMe(req, res, corsHeaders);
             return;
         }
         if (pathName === '/api/auth/logout' && method === 'POST') {
             await handleAuthLogout(req, res, corsHeaders);
+            return;
+        }
+
+        if (pathName === '/api/profile/me' && method === 'GET') {
+            await handleProfileMe(req, res, corsHeaders, parsedUrl);
+            return;
+        }
+        if (pathName === '/api/profile/me' && method === 'POST') {
+            await handleProfileUpdate(req, res, corsHeaders);
+            return;
+        }
+
+        const adminRoleRoute = pathName.match(/^\/api\/admin\/users\/([0-9]+)\/role$/i);
+        if (adminRoleRoute && method === 'POST') {
+            await handleAdminUpdateRole(req, res, corsHeaders, Number.parseInt(adminRoleRoute[1], 10));
             return;
         }
 
@@ -1009,7 +1464,7 @@ function createCompetitionApiSupabase(options) {
             await routeApi(req, res, corsHeaders || {}, parsedUrl);
         } catch (error) {
             const statusCode = clampNumber(Number.parseInt(error.status || '500', 10), 400, 599);
-            const message = statusCode >= 500
+            const message = (statusCode >= 500 && statusCode !== 501)
                 ? 'Erreur serveur.'
                 : String(error.message || 'Requete invalide.');
             apiError(res, statusCode, message, corsHeaders || {});

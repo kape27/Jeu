@@ -8,6 +8,15 @@ create table if not exists public.users (
     password_salt text not null,
     pseudo text not null unique,
     role text not null default 'player',
+    avatar_url text not null default '',
+    country_code text not null default '',
+    level integer not null default 1,
+    elo integer not null default 1200,
+    games_played integer not null default 0,
+    wins_total integer not null default 0,
+    losses_total integer not null default 0,
+    auth_provider text not null default 'password',
+    auth_provider_user_id text,
     created_at bigint not null,
     updated_at bigint not null
 );
@@ -76,6 +85,33 @@ create index if not exists idx_event_players_event_id
 
 create index if not exists idx_matches_event_round
     on public.matches(event_id, round_number, slot_index);
+
+create index if not exists idx_users_auth_provider
+    on public.users(auth_provider, auth_provider_user_id);
+
+alter table public.users
+    add column if not exists avatar_url text not null default '',
+    add column if not exists country_code text not null default '',
+    add column if not exists level integer not null default 1,
+    add column if not exists elo integer not null default 1200,
+    add column if not exists games_played integer not null default 0,
+    add column if not exists wins_total integer not null default 0,
+    add column if not exists losses_total integer not null default 0,
+    add column if not exists auth_provider text not null default 'password',
+    add column if not exists auth_provider_user_id text;
+
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'users_role_check'
+    ) then
+        alter table public.users
+            add constraint users_role_check check (role in ('player', 'organizer', 'admin'));
+    end if;
+end
+$$;
 
 -- RLS desactivee pour MVP (service role uniquement cote serveur).
 alter table public.users disable row level security;

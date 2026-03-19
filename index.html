@@ -770,6 +770,17 @@
                             class="home-mode-chevron material-symbols-outlined opacity-30 group-hover:opacity-100 transition-opacity">chevron_right</span>
                     </button>
 
+                    <button onclick="navToScreen('screenCompetition')"
+                        class="home-mode-btn group relative flex w-full items-center justify-between overflow-hidden bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700/50 shadow-lg active:scale-95 transition-all">
+                        <div class="flex items-center gap-4">
+                            <span class="home-mode-icon material-symbols-outlined text-amber-500">trophy</span>
+                            <span class="home-mode-title font-bold">Mode Compétition</span>
+                        </div>
+                        <div
+                            class="home-mode-badge flex items-center bg-amber-500/20 font-black text-amber-500 border border-amber-500/30">
+                            NOUVEAU</div>
+                    </button>
+
                     <button onclick="selectModeAndGoSetup('bluetooth')"
                         class="home-mode-btn group relative flex w-full items-center justify-between overflow-hidden bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700/50 shadow-lg active:scale-95 transition-all">
                         <div class="flex items-center gap-4">
@@ -1353,7 +1364,199 @@
             </main>
         </div>
 
+        <!-- SCREEN 4.5: COMPETITION -->
+        <div id="screenCompetition" class="relative z-10 flex flex-1 flex-col w-full h-full screen-hidden">
+            <header class="flex items-center p-4 pb-2 justify-between shrink-0 bg-background-light/90 dark:bg-background-dark/90 ios-blur z-20">
+                <button onclick="navToScreen('screenMainMenu')"
+                    class="w-12 h-12 flex items-center justify-center bg-slate-200/50 dark:bg-slate-800/50 rounded-full transition-transform active:scale-95 text-slate-900 dark:text-white">
+                    <span class="material-symbols-outlined text-[24px]">arrow_back</span>
+                </button>
+                <h1 class="text-base font-bold tracking-widest uppercase flex-1 text-center">Compétition</h1>
+                <div class="w-12 h-12"></div>
+            </header>
+
+            <main class="flex-1 flex flex-col px-6 space-y-6 max-w-lg mx-auto w-full overflow-y-auto no-scrollbar pb-10 pt-4">
+                <!-- Status bar -->
+                <div id="compStatus" class="text-center text-xs font-bold py-2 rounded-xl hidden"></div>
+
+                <!-- Tabs -->
+                <div class="flex p-1 bg-slate-200/50 dark:bg-slate-800/80 rounded-2xl border border-slate-300 dark:border-slate-700/50 shadow-inner">
+                    <button onclick="switchCompTab('events')" id="btnTabEvents" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm">SALONS</button>
+                    <button onclick="switchCompTab('account')" id="btnTabAccount" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500">COMPTE</button>
+                    <button onclick="switchCompTab('stats')" id="btnTabStats" class="flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500">STATS</button>
+                </div>
+
+                <!-- Tab content: EVENTS -->
+                <div id="tabEvents" class="comp-tab space-y-6">
+                    <section class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Salons Publics</h3>
+                            <button onclick="refreshCompEvents()" class="size-8 flex items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:rotate-180 transition-transform">
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                            </button>
+                        </div>
+                        <div id="compEventsList" class="space-y-3">
+                            <p class="text-center text-xs text-slate-500 py-10">Chargement des salons...</p>
+                        </div>
+                    </section>
+
+                    <section class="p-5 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <h3 class="text-sm font-bold mb-4">Créer un salon</h3>
+                        <div class="space-y-3">
+                            <input id="newCompName" type="text" placeholder="Nom de la compétition" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="newCompMode" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-3 text-sm font-medium">
+                                    <option value="classic">Classic</option>
+                                    <option value="tempete">Tempête</option>
+                                    <option value="rapide">Rapide</option>
+                                </select>
+                                <input id="newCompMax" type="number" value="8" min="2" max="64" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                            </div>
+                            <button onclick="createCompEvent()" class="w-full py-3 bg-primary text-white font-bold rounded-xl active:scale-95 transition-all text-sm uppercase tracking-wider">Créer le tournoi</button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tab content: ACCOUNT -->
+                <div id="tabAccount" class="comp-tab hidden space-y-6">
+                    <section class="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <div id="compUserInfo" class="hidden space-y-6">
+                            <!-- Profile Header -->
+                            <div class="flex items-center gap-5 border-b border-slate-100 dark:border-slate-800 pb-6">
+                                <div id="compAvatarContainer" class="relative group">
+                                    <div id="compAvatarImg" class="size-20 rounded-3xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105">
+                                         <span class="material-symbols-outlined text-4xl opacity-30">person</span>
+                                    </div>
+                                    <div class="absolute -bottom-1 -right-1 size-7 bg-primary text-white rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-md">
+                                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 id="compUserName" class="text-xl font-black tracking-tight">Pseudo</h4>
+                                    <p id="compUserEmail" class="text-xs text-slate-500 font-medium opacity-80">email@example.com</p>
+                                    <div class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider">Joueur Vérifié</div>
+                                </div>
+                            </div>
+
+                            <!-- Profile Edit Form (Hidden by default) -->
+                            <div id="compProfileEditForm" class="hidden p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-4">
+                                <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Modifier mon Profil</h5>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="text-[9px] font-bold uppercase tracking-wider ml-1 mb-1 block opacity-50">Pseudo</label>
+                                        <input id="editCompPseudo" type="text" placeholder="Nouveau pseudo" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] font-bold uppercase tracking-wider ml-1 mb-1 block opacity-50">URL de l'Avatar</label>
+                                        <input id="editCompAvatar" type="url" placeholder="https://..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 pt-2">
+                                        <button onclick="toggleCompProfileEdit()" class="py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-[10px] uppercase tracking-wider active:scale-95 transition-all">Annuler</button>
+                                        <button onclick="handleCompProfileUpdate()" class="py-2.5 bg-primary text-white font-bold rounded-xl text-[10px] uppercase tracking-wider active:scale-95 transition-all shadow-md shadow-primary/20">Enregistrer</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Profile Actions -->
+                            <div id="compProfileActions" class="space-y-3">
+                                <button onclick="toggleCompProfileEdit()" class="w-full py-3.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs uppercase tracking-widest border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                                    <span class="material-symbols-outlined text-[18px]">manage_accounts</span>
+                                    Éditer le profil
+                                </button>
+                                <button onclick="handleCompLogout()" class="w-full py-3.5 bg-red-500/5 text-red-500 font-bold rounded-xl text-xs uppercase tracking-widest border border-red-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                                    <span class="material-symbols-outlined text-[18px]">logout</span>
+                                    Déconnexion
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="compLoginForm" class="space-y-4">
+                            <div class="flex items-center justify-between gap-4 mb-2">
+                                <h3 id="compAuthTitle" class="text-sm font-bold opacity-60 uppercase tracking-widest">Connexion</h3>
+                                <button onclick="toggleCompAuthMode()" id="compAuthToggleBtn" class="text-[10px] font-bold text-primary uppercase tracking-wider hover:underline">Pas de compte ? S'inscrire</button>
+                            </div>
+                            
+                            <div id="compPseudoGroup" class="hidden">
+                                <input id="compPseudo" type="text" placeholder="Pseudo" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                            </div>
+                            
+                            <input id="compEmail" type="email" placeholder="Email" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                            <input id="compPass" type="password" placeholder="Mot de passe" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm font-medium">
+                            
+                            <button id="compAuthSubmitBtn" onclick="handleCompAuthSubmit()" class="w-full py-4 bg-primary text-white font-bold rounded-xl text-xs uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg shadow-primary/20">Se Connecter</button>
+                            <div class="flex items-center gap-2 py-2">
+                                <div class="h-px flex-1 bg-slate-100 dark:bg-slate-800"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ou avec</span>
+                                <div class="h-px flex-1 bg-slate-100 dark:bg-slate-800"></div>
+                            </div>
+                            <button onclick="handleCompOAuth('google')" class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 active:scale-95 transition-all">
+                                <svg class="size-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                                Continuer avec Google
+                            </button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tab content: STATS -->
+                <div id="tabStats" class="comp-tab hidden space-y-6">
+                    <section class="grid grid-cols-2 gap-4">
+                        <div class="p-6 rounded-3xl bg-primary/10 border border-primary/20 text-center">
+                            <p class="text-[10px] font-black tracking-widest uppercase text-primary mb-1">Cote ELO</p>
+                            <h4 id="compUserElo" class="text-3xl font-black text-slate-900 dark:text-white">1200</h4>
+                        </div>
+                        <div class="p-6 rounded-3xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-center">
+                            <p class="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-1">Winrate</p>
+                            <h4 id="compUserWinrate" class="text-3xl font-black text-slate-900 dark:text-white">0%</h4>
+                        </div>
+                    </section>
+
+                    <section class="p-5 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
+                        <h3 class="text-sm font-bold mb-4">Historique Récent</h3>
+                        <div id="compHistoryList" class="space-y-2">
+                             <p class="text-center text-xs text-slate-500 py-4">Aucune partie terminée.</p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Detail Modal (Floating over tabs) -->
+                <div id="compEventDetail" class="hidden fixed inset-0 z-40 bg-background-light dark:bg-background-dark p-6 overflow-y-auto no-scrollbar">
+                     <div class="max-w-md mx-auto relative h-full flex flex-col pt-12">
+                         <button onclick="closeCompDetail()" class="absolute left-0 top-0 size-11 flex items-center justify-center rounded-full bg-slate-200/50 dark:bg-slate-800/50 active:scale-95 transition-all">
+                             <span class="material-symbols-outlined text-[20px]">close</span>
+                         </button>
+                         <div id="compDetailContent" class="flex-1 space-y-6">
+                             <div class="text-center space-y-1">
+                                 <div id="compDetailStatus" class="inline-block px-3 py-1 rounded-full bg-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">En cours</div>
+                                 <h2 id="compDetailName" class="text-2xl font-black">Nom Salon</h2>
+                                 <p id="compDetailCode" class="text-xs text-slate-500 uppercase tracking-widest">CODE: ABC123</p>
+                             </div>
+
+                             <div class="grid grid-cols-2 gap-2">
+                                 <button id="btnJoinComp" onclick="joinTargetComp()" class="py-3.5 bg-primary text-white font-bold rounded-2xl active:scale-95 transition-all text-xs uppercase tracking-widest">Rejoindre</button>
+                                 <button id="btnLeaveComp" onclick="leaveTargetComp()" class="py-3.5 bg-slate-200 dark:bg-slate-800 font-bold rounded-2xl active:scale-95 transition-all text-xs uppercase tracking-widest">Quitter</button>
+                             </div>
+
+                             <div class="space-y-4 pt-4">
+                                 <h3 class="text-sm font-black border-l-4 border-primary pl-3">Joueurs</h3>
+                                 <div id="compDetailPlayers" class="space-y-2"></div>
+                             </div>
+
+                             <div class="space-y-4 pt-4">
+                                 <h3 class="text-sm font-black border-l-4 border-primary pl-3">Derniers Matchs</h3>
+                                 <div id="compDetailMatches" class="space-y-2"></div>
+                             </div>
+
+                             <div class="pt-6">
+                                 <button id="btnStartComp" onclick="startTargetComp()" class="hidden w-full py-4 bg-emerald-500 text-white font-black rounded-2xl active:scale-95 transition-all text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/20">Lancer la compétition</button>
+                             </div>
+                         </div>
+                     </div>
+                </div>
+            </main>
+        </div>
+
         <!-- SCREEN 5: ACTIVE GAME -->
+
         <div id="screenGame"
             class="relative flex flex-1 flex-col w-full h-[100dvh] screen-hidden bg-background-light dark:bg-background-dark">
             <header class="flex items-center justify-between px-5 pt-6 pb-4 shrink-0 relative inset-x-0 top-0 z-30">
@@ -1571,7 +1774,7 @@
 
         // --- NOUVELLES FONCTIONS DE NAVIGATION STITCH ---
         function getManagedScreenIds() {
-            return ['screenMainMenu', 'screenSetup', 'screenLobby', 'screenSalon', 'screenGame'];
+            return ['screenMainMenu', 'screenSetup', 'screenLobby', 'screenSalon', 'screenCompetition', 'screenGame'];
         }
 
         function detectCurrentScreenId() {
@@ -10310,6 +10513,239 @@
         if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
             setTheme(true);
         }
+    
+        // --- COMPETITION MODE LOGIC ---
+        const COMP_API_BASE = 'https://jeu-points.onrender.com';
+        const COMP_TOKEN_KEY = 'points.api.token';
+        let compToken = localStorage.getItem(COMP_TOKEN_KEY) || '';
+        let compUser = null;
+        let selectedCompCode = '';
+
+        async function apiComp(path, method = 'GET', body = null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (compToken) headers.Authorization = `Bearer ${compToken}`;
+            try {
+                const response = await fetch(`${COMP_API_BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : null });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.ok === false) throw new Error(data.error || `Erreur API (${response.status})`);
+                return data;
+            } catch (err) { console.error('API Error:', err); throw err; }
+        }
+
+        window.switchCompTab = function(tabId) {
+            document.querySelectorAll('.comp-tab').forEach(t => t.classList.add('hidden'));
+            const content = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if(content) content.classList.remove('hidden');
+            const tabs = ['events', 'account', 'stats'];
+            tabs.forEach(t => {
+                const btn = document.getElementById('btnTab' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (btn) {
+                    if (t === tabId) {
+                        btn.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm";
+                    } else {
+                        btn.className = "flex-1 py-2.5 text-xs font-bold rounded-xl transition-all text-slate-500";
+                    }
+                }
+            });
+            if (tabId === 'account' || tabId === 'stats') refreshCompProfile();
+            if (tabId === 'events') refreshCompEvents();
+        }
+
+        let isRegisterMode = false;
+
+        window.toggleCompAuthMode = function() {
+            isRegisterMode = !isRegisterMode;
+            const title = document.getElementById('compAuthTitle');
+            const toggleBtn = document.getElementById('compAuthToggleBtn');
+            const pseudoGroup = document.getElementById('compPseudoGroup');
+            const submitBtn = document.getElementById('compAuthSubmitBtn');
+
+            if (isRegisterMode) {
+                if(title) title.textContent = "Inscription";
+                if(toggleBtn) toggleBtn.textContent = "Déjà un compte ? Connexion";
+                if(pseudoGroup) pseudoGroup.classList.remove('hidden');
+                if(submitBtn) submitBtn.textContent = "Créer mon Compte";
+            } else {
+                if(title) title.textContent = "Connexion";
+                if(toggleBtn) toggleBtn.textContent = "Pas de compte ? S'inscrire";
+                if(pseudoGroup) pseudoGroup.classList.add('hidden');
+                if(submitBtn) submitBtn.textContent = "Se Connecter";
+            }
+        }
+
+        window.handleCompAuthSubmit = async function() {
+            const email = document.getElementById('compEmail').value.trim();
+            const pass = document.getElementById('compPass').value;
+            const pseudo = document.getElementById('compPseudo')?.value?.trim();
+
+            if (!email || !pass) return showToast('Veuillez remplir les champs obligatoires.', 'warning');
+            if (isRegisterMode && (!pseudo || pseudo.length < 2)) return showToast('Pseudo requis (min 2 car.).', 'warning');
+
+            const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+            const body = { email, password: pass };
+            if (isRegisterMode) body.pseudo = pseudo;
+
+            try {
+                const res = await apiComp(endpoint, 'POST', body);
+                compToken = res.token; 
+                localStorage.setItem(COMP_TOKEN_KEY, compToken);
+                showToast(isRegisterMode ? 'Compte créé avec succès !' : 'Bon retour parmi nous !', 'success');
+                refreshCompProfile();
+                switchCompTab('events');
+            } catch (err) { 
+                showToast(err.message, 'error'); 
+            }
+        }
+
+
+        window.handleCompLogout = function() {
+            compToken = ''; localStorage.removeItem(COMP_TOKEN_KEY);
+            const ui = document.getElementById('compUserInfo'); if(ui) ui.classList.add('hidden');
+            const form = document.getElementById('compLoginForm'); if(form) form.classList.remove('hidden');
+            showToast('Déconnecté.', 'info');
+        }
+
+        window.toggleCompProfileEdit = function() {
+            const form = document.getElementById('compProfileEditForm');
+            const actions = document.getElementById('compProfileActions');
+            if (form && actions) {
+                const isHidden = form.classList.contains('hidden');
+                form.classList.toggle('hidden');
+                actions.classList.toggle('hidden');
+                
+                if (isHidden && compUser) {
+                    const editPseudo = document.getElementById('editCompPseudo');
+                    const editAvatar = document.getElementById('editCompAvatar');
+                    if(editPseudo) editPseudo.value = compUser.pseudo;
+                    if(editAvatar) editAvatar.value = compUser.avatarUrl || '';
+                }
+            }
+        }
+
+        window.handleCompProfileUpdate = async function() {
+            const pseudo = document.getElementById('editCompPseudo')?.value?.trim();
+            const avatarUrl = document.getElementById('editCompAvatar')?.value?.trim();
+
+            if (!pseudo || pseudo.length < 2) return showToast('Pseudo trop court.', 'warning');
+
+            try {
+                await apiComp('/api/profile/me', 'POST', { pseudo, avatarUrl });
+                showToast('Profil mis à jour !', 'success');
+                toggleCompProfileEdit();
+                refreshCompProfile();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function refreshCompProfile() {
+            if (!compToken) return;
+            try {
+                const res = await apiComp('/api/profile/me?historyLimit=10');
+                compUser = res.user;
+                const ui = document.getElementById('compUserInfo'); if(ui) ui.classList.remove('hidden');
+                const form = document.getElementById('compLoginForm'); if(form) form.classList.add('hidden');
+                const name = document.getElementById('compUserName'); if(name) name.textContent = compUser.pseudo;
+                const email = document.getElementById('compUserEmail'); if(email) email.textContent = compUser.email;
+                const avatarImg = document.getElementById('compAvatarImg');
+                if (avatarImg) {
+                    if (compUser.avatarUrl) {
+                        avatarImg.innerHTML = `<img src="${compUser.avatarUrl}" class="size-full object-cover">`;
+                    } else {
+                        avatarImg.innerHTML = `<span class="material-symbols-outlined text-4xl opacity-30">person</span>`;
+                    }
+                }
+                const stats = res.stats || res.user || {};
+                const elo = document.getElementById('compUserElo'); if(elo) elo.textContent = stats.elo || 1200;
+                const wr = document.getElementById('compUserWinrate'); if(wr) wr.textContent = (stats.winRate || 0) + '%';
+            } catch (err) { console.error(err); }
+        }
+
+
+        window.refreshCompEvents = async function() {
+            const list = document.getElementById('compEventsList');
+            if(!list) return;
+            try {
+                const res = await apiComp('/api/events?limit=20');
+                const events = res.events || [];
+                if (events.length === 0) { list.innerHTML = '<p class=\"text-center text-xs text-slate-500 py-10\">Aucun salon actif.</p>'; return; }
+                list.innerHTML = events.map(e => `
+                    <div onclick=\"openCompDetail('${e.code}')\" class=\"p-4 rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm active:scale-[0.98] transition-all cursor-pointer\">
+                        <div class=\"flex items-center justify-between mb-2\"><span class=\"text-xs font-black uppercase text-primary tracking-widest\">${e.mode}</span><span class=\"text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-bold\">${e.status}</span></div>
+                        <h4 class=\"font-bold text-slate-900 dark:text-white\">${e.name}</h4>
+                        <div class=\"flex items-center justify-between mt-3 text-[10px] text-slate-500 font-bold uppercase tracking-wider\"><span>Hôte: ${e.ownerPseudo}</span><span>${e.playerCount}/${e.maxPlayers} Joueurs</span></div>
+                    </div>`).join('');
+            } catch (err) { list.innerHTML = `<p class=\"text-center text-xs text-red-500 py-10\">Erreur réseau</p>`; }
+        }
+
+        window.openCompDetail = async function(code) {
+            selectedCompCode = code; document.getElementById('compEventDetail').classList.remove('hidden');
+            try {
+                const res = await apiComp(`/api/events/${code}`);
+                const e = res.event;
+                document.getElementById('compDetailName').textContent = e.name;
+                document.getElementById('compDetailCode').textContent = 'CODE: ' + e.code;
+                document.getElementById('compDetailStatus').textContent = e.status;
+                document.getElementById('compDetailPlayers').innerHTML = e.players.map(p => `
+                    <div class=\"flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50\">
+                        <div class=\"flex items-center gap-2\"><span class=\"size-2 rounded-full bg-primary\"></span><span class=\"text-xs font-bold\">${p.displayName}</span></div>
+                        <span class=\"text-[10px] font-black opacity-40\">${p.points} PTS</span>
+                    </div>`).join('');
+                document.getElementById('compDetailMatches').innerHTML = (e.matches || []).map(m => `
+                    <div class=\"p-2.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-700/60 text-[10px] flex justify-between items-center\">
+                        <span class=\"opacity-60\">R${m.round}</span>
+                        <span class=\"font-bold\">${m.playerAUserId || 'BYE'} vs ${m.playerBUserId || 'BYE'}</span>
+                        <span class=\"px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-black\">${m.status}</span>
+                    </div>`).join('') || '<p class=\"text-center text-[11px] opacity-40 py-2\">Pas de matchs.</p>';
+                const me = compUser ? compUser.id : null;
+                const isJoined = e.players.some(p => p.userId === me);
+                const isOwner = (compUser && e.ownerPseudo === compUser.pseudo);
+                document.getElementById('btnJoinComp').classList.toggle('hidden', isJoined);
+                document.getElementById('btnLeaveComp').classList.toggle('hidden', !isJoined);
+                const btnStart = document.getElementById('btnStartComp');
+                if(btnStart) btnStart.classList.toggle('hidden', !isOwner || e.status !== 'open');
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        window.closeCompDetail = function() { const el = document.getElementById('compEventDetail'); if(el) el.classList.add('hidden'); }
+
+        window.createCompEvent = async function() {
+            if (!compToken) return showToast('Connectez-vous.', 'warning');
+            const name = document.getElementById('newCompName').value;
+            const mode = document.getElementById('newCompMode').value;
+            const maxPlayers = document.getElementById('newCompMax').value;
+            if(!name) return showToast('Nom requis.', 'warning');
+            try {
+                const res = await apiComp('/api/events', 'POST', { name, mode, maxPlayers: parseInt(maxPlayers) });
+                showToast('Salon créé !', 'success'); openCompDetail(res.event.code); refreshCompEvents();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        window.joinTargetComp = async function() {
+             if (!compToken) return showToast('Connectez-vous.', 'warning');
+             try { await apiComp(`/api/events/${selectedCompCode}/join`, 'POST'); showToast('Salon rejoint !', 'success'); openCompDetail(selectedCompCode); refreshCompEvents(); } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        window.leaveTargetComp = async function() {
+             try { await apiComp(`/api/events/${selectedCompCode}/leave`, 'POST'); showToast('Salon quitté.', 'info'); openCompDetail(selectedCompCode); refreshCompEvents(); } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        window.startTargetComp = async function() {
+             try { await apiComp(`/api/events/${selectedCompCode}/start`, 'POST'); showToast('Lancement !', 'success'); openCompDetail(selectedCompCode); } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        window.handleCompOAuth = async function(provider) {
+             const token = prompt('Collez votre jeton Supabase ici :');
+             if (token) {
+                 try {
+                     const res = await apiComp('/api/auth/oauth/mobile', 'POST', { provider, accessToken: token });
+                     compToken = res.token; localStorage.setItem(COMP_TOKEN_KEY, compToken);
+                     showToast('OAuth réussi !', 'success'); refreshCompProfile(); switchCompTab('events');
+                 } catch (err) { showToast(err.message, 'error'); }
+             }
+        }
+
+        if (compToken) refreshCompProfile();
     
 </script>
 </body>

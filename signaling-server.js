@@ -591,8 +591,47 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ ok: true, rooms: stats.rooms, clients: stats.clients, maxPlayers: MAX_PLAYERS }));
             return;
         }
+
+        // Simple Static File Server / SPA Router
+        const staticPaths = ['/', '/index.html', '/client/index.html'];
+        const isStaticRequest = staticPaths.includes(req.url) || !req.url.startsWith('/api/');
+
+        if (isStaticRequest) {
+            try {
+                const fs = require('fs');
+                let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
+                
+                // SPA Fallback: if file doesn't exist, serve index.html
+                if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+                    filePath = path.join(__dirname, 'index.html');
+                }
+
+                const ext = path.extname(filePath).toLowerCase();
+                const mimeTypes = {
+                    '.html': 'text/html',
+                    '.js': 'text/javascript',
+                    '.css': 'text/css',
+                    '.json': 'application/json',
+                    '.png': 'image/png',
+                    '.jpg': 'image/jpg',
+                    '.gif': 'image/gif',
+                    '.svg': 'image/svg+xml',
+                    '.wav': 'audio/wav',
+                    '.mp4': 'video/mp4',
+                };
+                const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+                const content = fs.readFileSync(filePath);
+                res.writeHead(200, { 'Content-Type': contentType + '; charset=utf-8' });
+                res.end(content);
+                return;
+            } catch (err) {
+                console.error('Static serving error:', err.message);
+            }
+        }
+
         res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('WebRTC signaling server is running.\n');
+        res.end('WebRTC signaling server is running. Try /index.html to play!\n');
     }).catch((error) => {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ ok: false, error: 'Erreur serveur.' }));

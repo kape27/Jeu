@@ -6,6 +6,7 @@ const { createCompetitionApiSupabase } = require('./competition-api-supabase');
 let DatabaseSync = null;
 
 const EVENT_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const ROLE_SET = new Set(['player', 'organizer', 'admin']);
 
 function clampNumber(value, min, max) {
     if (!Number.isFinite(value)) return min;
@@ -85,6 +86,55 @@ function createCompetitionApi(options) {
             .trim()
             .replace(/\s+/g, ' ')
             .slice(0, 24);
+    }
+
+    function sanitizeCountryCode(raw) {
+        return String(raw || '')
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z]/g, '')
+            .slice(0, 2);
+    }
+
+    function sanitizeAvatarUrl(raw) {
+        const value = String(raw || '').trim().slice(0, 512);
+        if (!value) return '';
+        try {
+            const parsed = new URL(value);
+            if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                return parsed.toString();
+            }
+        } catch (_error) {
+            return '';
+        }
+        return '';
+    }
+
+    function sanitizeRole(raw) {
+        const role = String(raw || '').trim().toLowerCase();
+        return ROLE_SET.has(role) ? role : 'player';
+    }
+
+    function levelFromElo(elo) {
+        const normalizedElo = Number.isFinite(elo) ? elo : 1200;
+        return Math.max(1, Math.floor((normalizedElo - 800) / 120) + 1);
+    }
+
+    function winRatePercent(wins, gamesPlayed) {
+        const g = Math.max(0, Number(gamesPlayed || 0));
+        if (g === 0) return 0;
+        const w = Math.max(0, Number(wins || 0));
+        return Math.round((w / g) * 10000) / 100;
+    }
+
+    function computeEloDelta(winnerEloRaw, loserEloRaw, kFactor = 24) {
+        const winnerElo = Number.isFinite(winnerEloRaw) ? winnerEloRaw : 1200;
+        const loserElo = Number.isFinite(loserEloRaw) ? loserEloRaw : 1200;
+        const expectedWinner = 1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
+        const expectedLoser = 1 - expectedWinner;
+        const winnerDelta = Math.round(kFactor * (1 - expectedWinner));
+        const loserDelta = Math.round(kFactor * (0 - expectedLoser));
+        return { winnerDelta, loserDelta };
     }
 
     function sanitizeEventName(raw) {
@@ -179,7 +229,8 @@ function createCompetitionApi(options) {
         const now = nowMs();
         const row = dbGet(
             `
-            SELECT s.token_hash, s.user_id, s.expires_at, u.id, u.email, u.pseudo, u.role, u.created_at
+            SELECT s.token_hash, s.user_id, s.expires_at, u.id, u.email, u.pseudo, u.role, u.avatar_url, u.country_code,
+                   u.level, u.elo, u.games_played, u.wins_total, u.losses_total, u.auth_provider, u.created_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token_hash = ?
@@ -198,19 +249,94 @@ function createCompetitionApi(options) {
             id: Number(row.id),
             email: row.email,
             pseudo: row.pseudo,
-            role: row.role,
+            role: sanitizeRole(row.role),
+            avatarUrl: String(row.avatar_url || ''),
+            country: String(row.country_code || ''),
+            level: Number(row.level || 1),
+            elo: Number(row.elo || 1200),
+            gamesPlayed: Number(row.games_played || 0),
+            wins: Number(row.wins_total || 0),
+            losses: Number(row.losses_total || 0),
+            winRate: winRatePercent(Number(row.wins_total || 0), Number(row.games_played || 0)),
+            authProvider: String(row.auth_provider || 'password'),
             createdAt: Number(row.created_at)
         };
     }
 
     function toSafeUser(userRow) {
+        const gamesPlayed = Number(userRow.games_played || 0);
+        const winsTotal = Number(userRow.wins_total || 0);
+        const lossesTotal = Number(userRow.losses_total || 0);
+        const elo = Number(userRow.elo || 1200);
+        const level = Number(userRow.level || levelFromElo(elo));
         return {
             id: Number(userRow.id),
             email: String(userRow.email || ''),
             pseudo: String(userRow.pseudo || ''),
-            role: String(userRow.role || 'player'),
+            role: sanitizeRole(userRow.role),
+            avatarUrl: String(userRow.avatar_url || ''),
+            country: String(userRow.country_code || ''),
+            level,
+            elo,
+            gamesPlayed,
+            wins: winsTotal,
+            losses: lossesTotal,
+            winRate: winRatePercent(winsTotal, gamesPlayed),
+            authProvider: String(userRow.auth_provider || 'password'),
             createdAt: Number(userRow.created_at || userRow.createdAt || nowMs())
         };
+    }
+
+    function getUserById(userId) {
+        return dbGet(
+            `
+            SELECT id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, created_at
+            FROM users
+            WHERE id = ?
+            LIMIT 1
+            `,
+            [userId]
+        );
+    }
+
+    function getUserMatchHistory(userId, limitRaw = 20) {
+        const limit = clampNumber(Number.parseInt(limitRaw, 10), 1, 100);
+        const rows = dbAll(
+            `
+            SELECT m.id, m.event_id, m.round_number, m.slot_index, m.player_a_user_id, m.player_b_user_id, m.winner_user_id,
+                   m.score_a, m.score_b, m.updated_at, e.name AS event_name, e.code AS event_code
+            FROM matches m
+            JOIN events e ON e.id = m.event_id
+            WHERE m.status = 'completed'
+              AND (m.player_a_user_id = ? OR m.player_b_user_id = ?)
+            ORDER BY m.updated_at DESC
+            LIMIT ?
+            `,
+            [userId, userId, limit]
+        );
+
+        return rows.map((row) => {
+            const playerA = row.player_a_user_id == null ? null : Number(row.player_a_user_id);
+            const playerB = row.player_b_user_id == null ? null : Number(row.player_b_user_id);
+            const winner = row.winner_user_id == null ? null : Number(row.winner_user_id);
+            const opponentId = playerA === Number(userId) ? playerB : playerA;
+            const opponentRow = opponentId == null ? null : dbGet('SELECT pseudo FROM users WHERE id = ? LIMIT 1', [opponentId]);
+            return {
+                matchId: Number(row.id),
+                eventId: Number(row.event_id),
+                eventCode: String(row.event_code || ''),
+                eventName: String(row.event_name || 'Evenement'),
+                round: Number(row.round_number || 0),
+                slot: Number(row.slot_index || 0),
+                playedAt: Number(row.updated_at || 0),
+                opponentUserId: opponentId,
+                opponentPseudo: opponentId == null ? 'BYE' : String(opponentRow?.pseudo || `Joueur #${opponentId}`),
+                result: winner === Number(userId) ? 'win' : 'loss',
+                scoreA: Number(row.score_a || 0),
+                scoreB: Number(row.score_b || 0),
+                winnerUserId: winner
+            };
+        });
     }
 
     function getClientIp(req) {
@@ -476,6 +602,42 @@ function createCompetitionApi(options) {
         );
     }
 
+    function applyGlobalMatchResult(winnerUserId, loserUserId) {
+        if (!winnerUserId || !loserUserId) return;
+        const winner = getUserById(winnerUserId);
+        const loser = getUserById(loserUserId);
+        if (!winner || !loser) return;
+
+        const { winnerDelta, loserDelta } = computeEloDelta(
+            Number(winner.elo || 1200),
+            Number(loser.elo || 1200)
+        );
+
+        const winnerElo = Math.max(100, Number(winner.elo || 1200) + winnerDelta);
+        const loserElo = Math.max(100, Number(loser.elo || 1200) + loserDelta);
+        const winnerGames = Number(winner.games_played || 0) + 1;
+        const loserGames = Number(loser.games_played || 0) + 1;
+        const winnerWins = Number(winner.wins_total || 0) + 1;
+        const loserLosses = Number(loser.losses_total || 0) + 1;
+
+        dbRun(
+            `
+            UPDATE users
+            SET elo = ?, level = ?, games_played = ?, wins_total = ?, updated_at = ?
+            WHERE id = ?
+            `,
+            [winnerElo, levelFromElo(winnerElo), winnerGames, winnerWins, nowMs(), winnerUserId]
+        );
+        dbRun(
+            `
+            UPDATE users
+            SET elo = ?, level = ?, games_played = ?, losses_total = ?, updated_at = ?
+            WHERE id = ?
+            `,
+            [loserElo, levelFromElo(loserElo), loserGames, loserLosses, nowMs(), loserUserId]
+        );
+    }
+
     function shuffleArray(values) {
         const output = [...values];
         for (let i = output.length - 1; i > 0; i -= 1) {
@@ -600,14 +762,18 @@ function createCompetitionApi(options) {
         try {
             const insertResult = dbRun(
                 `
-                INSERT INTO users (email, password_hash, password_salt, pseudo, role, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'player', ?, ?)
+                INSERT INTO users (
+                    email, password_hash, password_salt, pseudo, role, avatar_url, country_code,
+                    level, elo, games_played, wins_total, losses_total, auth_provider, auth_provider_user_id,
+                    created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, 'player', ?, ?, 1, 1200, 0, 0, 0, 'password', NULL, ?, ?)
                 `,
-                [email, hashHex, saltHex, pseudo, now, now]
+                [email, hashHex, saltHex, pseudo, sanitizeAvatarUrl(body.avatarUrl), sanitizeCountryCode(body.country), now, now]
             );
             const userId = Number(insertResult.lastInsertRowid);
             createdUser = dbGet(
-                'SELECT id, email, pseudo, role, created_at FROM users WHERE id = ? LIMIT 1',
+                'SELECT id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, created_at FROM users WHERE id = ? LIMIT 1',
                 [userId]
             );
         } catch (error) {
@@ -646,7 +812,7 @@ function createCompetitionApi(options) {
 
         const row = dbGet(
             `
-            SELECT id, email, pseudo, role, created_at, password_hash, password_salt
+            SELECT id, email, pseudo, role, avatar_url, country_code, level, elo, games_played, wins_total, losses_total, auth_provider, created_at, password_hash, password_salt
             FROM users
             WHERE email = ?
             LIMIT 1
@@ -691,6 +857,104 @@ function createCompetitionApi(options) {
         const tokenHash = hashToken(token);
         dbRun('DELETE FROM sessions WHERE token_hash = ?', [tokenHash]);
         sendJson(res, 200, { ok: true }, corsHeaders);
+    }
+
+    async function handleAuthOAuthMobile(_req, _res, _corsHeaders, _userIp) {
+        throw createHttpError(501, 'OAuth Google/Apple requis le mode Supabase.');
+    }
+
+    async function handleProfileMe(req, res, corsHeaders, parsedUrl) {
+        const user = requireUser(req);
+        if (!user) {
+            throw createHttpError(401, 'Session invalide.');
+        }
+        const history = getUserMatchHistory(user.id, parsedUrl.searchParams.get('historyLimit') || '20');
+        sendJson(
+            res,
+            200,
+            {
+                ok: true,
+                user,
+                history,
+                stats: {
+                    gamesPlayed: user.gamesPlayed,
+                    wins: user.wins,
+                    losses: user.losses,
+                    winRate: user.winRate,
+                    elo: user.elo,
+                    level: user.level
+                }
+            },
+            corsHeaders
+        );
+    }
+
+    async function handleProfileUpdate(req, res, corsHeaders) {
+        const user = requireUser(req);
+        if (!user) {
+            throw createHttpError(401, 'Session invalide.');
+        }
+        const body = await readJsonBody(req);
+        const patchFields = [];
+        const params = [];
+
+        if (typeof body.pseudo === 'string') {
+            const pseudo = sanitizePseudo(body.pseudo);
+            if (pseudo.length < 2) {
+                throw createHttpError(400, 'Pseudo invalide.');
+            }
+            patchFields.push('pseudo = ?');
+            params.push(pseudo);
+        }
+        if (typeof body.avatarUrl === 'string' || typeof body.avatar_url === 'string') {
+            patchFields.push('avatar_url = ?');
+            params.push(sanitizeAvatarUrl(body.avatarUrl || body.avatar_url));
+        }
+        if (typeof body.country === 'string' || typeof body.countryCode === 'string' || typeof body.country_code === 'string') {
+            patchFields.push('country_code = ?');
+            params.push(sanitizeCountryCode(body.country || body.countryCode || body.country_code));
+        }
+
+        if (patchFields.length === 0) {
+            throw createHttpError(400, 'Aucune modification fournie.');
+        }
+        patchFields.push('updated_at = ?');
+        params.push(nowMs(), user.id);
+
+        try {
+            dbRun(`UPDATE users SET ${patchFields.join(', ')} WHERE id = ?`, params);
+        } catch (error) {
+            if (isUniqueViolation(error)) {
+                throw createHttpError(409, 'Pseudo deja utilise.');
+            }
+            throw error;
+        }
+
+        const updated = getUserById(user.id);
+        sendJson(res, 200, { ok: true, user: toSafeUser(updated) }, corsHeaders);
+    }
+
+    async function handleAdminUpdateRole(req, res, corsHeaders, userId) {
+        const requester = requireUser(req);
+        if (!requester) {
+            throw createHttpError(401, 'Session invalide.');
+        }
+        if (requester.role !== 'admin') {
+            throw createHttpError(403, 'Action reservee aux admins.');
+        }
+
+        const body = await readJsonBody(req);
+        const role = sanitizeRole(body.role);
+        if (!ROLE_SET.has(role)) {
+            throw createHttpError(400, 'Role invalide.');
+        }
+
+        dbRun('UPDATE users SET role = ?, updated_at = ? WHERE id = ?', [role, nowMs(), userId]);
+        const updated = getUserById(userId);
+        if (!updated) {
+            throw createHttpError(404, 'Utilisateur introuvable.');
+        }
+        sendJson(res, 200, { ok: true, user: toSafeUser(updated) }, corsHeaders);
     }
 
     function handleEventsList(res, corsHeaders, parsedUrl) {
@@ -908,6 +1172,7 @@ function createCompetitionApi(options) {
             addPlayerStats(event.id, winnerUserId, { wins: 1, points: 3 });
             if (loserUserId != null) {
                 addPlayerStats(event.id, loserUserId, { losses: 1, points: 0 });
+                applyGlobalMatchResult(winnerUserId, loserUserId);
             }
 
             ensureCompetitionProgress(event.id);
@@ -946,12 +1211,31 @@ function createCompetitionApi(options) {
             await handleAuthLogin(req, res, corsHeaders, userIp);
             return;
         }
+        if (pathName === '/api/auth/oauth/mobile' && method === 'POST') {
+            await handleAuthOAuthMobile(req, res, corsHeaders, userIp);
+            return;
+        }
         if (pathName === '/api/auth/me' && method === 'GET') {
             handleAuthMe(req, res, corsHeaders);
             return;
         }
         if (pathName === '/api/auth/logout' && method === 'POST') {
             await handleAuthLogout(req, res, corsHeaders);
+            return;
+        }
+
+        if (pathName === '/api/profile/me' && method === 'GET') {
+            await handleProfileMe(req, res, corsHeaders, parsedUrl);
+            return;
+        }
+        if (pathName === '/api/profile/me' && method === 'POST') {
+            await handleProfileUpdate(req, res, corsHeaders);
+            return;
+        }
+
+        const adminRoleRoute = pathName.match(/^\/api\/admin\/users\/([0-9]+)\/role$/i);
+        if (adminRoleRoute && method === 'POST') {
+            await handleAdminUpdateRole(req, res, corsHeaders, Number.parseInt(adminRoleRoute[1], 10));
             return;
         }
 
@@ -1019,7 +1303,7 @@ function createCompetitionApi(options) {
             await routeApi(req, res, corsHeaders || {}, parsedUrl);
         } catch (error) {
             const statusCode = clampNumber(Number.parseInt(error.status || '500', 10), 400, 599);
-            const message = statusCode >= 500
+            const message = (statusCode >= 500 && statusCode !== 501)
                 ? 'Erreur serveur.'
                 : String(error.message || 'Requete invalide.');
             apiError(res, statusCode, message, corsHeaders || {});
@@ -1061,6 +1345,15 @@ function initDatabase(dbPath) {
             password_salt TEXT NOT NULL,
             pseudo TEXT NOT NULL UNIQUE,
             role TEXT NOT NULL DEFAULT 'player',
+            avatar_url TEXT NOT NULL DEFAULT '',
+            country_code TEXT NOT NULL DEFAULT '',
+            level INTEGER NOT NULL DEFAULT 1,
+            elo INTEGER NOT NULL DEFAULT 1200,
+            games_played INTEGER NOT NULL DEFAULT 0,
+            wins_total INTEGER NOT NULL DEFAULT 0,
+            losses_total INTEGER NOT NULL DEFAULT 0,
+            auth_provider TEXT NOT NULL DEFAULT 'password',
+            auth_provider_user_id TEXT,
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL
         );
@@ -1120,7 +1413,26 @@ function initDatabase(dbPath) {
         CREATE INDEX IF NOT EXISTS idx_event_players_event_id ON event_players(event_id);
         CREATE INDEX IF NOT EXISTS idx_matches_event_round ON matches(event_id, round_number, slot_index);
     `);
+
+    ensureSqliteColumn(db, 'users', 'avatar_url', "TEXT NOT NULL DEFAULT ''");
+    ensureSqliteColumn(db, 'users', 'country_code', "TEXT NOT NULL DEFAULT ''");
+    ensureSqliteColumn(db, 'users', 'level', 'INTEGER NOT NULL DEFAULT 1');
+    ensureSqliteColumn(db, 'users', 'elo', 'INTEGER NOT NULL DEFAULT 1200');
+    ensureSqliteColumn(db, 'users', 'games_played', 'INTEGER NOT NULL DEFAULT 0');
+    ensureSqliteColumn(db, 'users', 'wins_total', 'INTEGER NOT NULL DEFAULT 0');
+    ensureSqliteColumn(db, 'users', 'losses_total', 'INTEGER NOT NULL DEFAULT 0');
+    ensureSqliteColumn(db, 'users', 'auth_provider', "TEXT NOT NULL DEFAULT 'password'");
+    ensureSqliteColumn(db, 'users', 'auth_provider_user_id', 'TEXT');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_users_auth_provider ON users(auth_provider, auth_provider_user_id);');
     return db;
+}
+
+function ensureSqliteColumn(db, tableName, columnName, definition) {
+    const cols = db.prepare(`PRAGMA table_info(${tableName})`).all();
+    const hasColumn = cols.some((col) => String(col.name || '').toLowerCase() === String(columnName).toLowerCase());
+    if (!hasColumn) {
+        db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+    }
 }
 
 module.exports = {
