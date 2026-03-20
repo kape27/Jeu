@@ -125,11 +125,47 @@ function createCompetitionApiPg(options) {
                     updated_at BIGINT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS messages (
+                    id SERIAL PRIMARY KEY,
+                    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    content TEXT NOT NULL,
+                    tone TEXT NOT NULL DEFAULT 'info',
+                    created_at BIGINT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS achievements (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    icon TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    criteria_type TEXT NOT NULL,
+                    criteria_value INTEGER NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS user_achievements (
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    achievement_id INTEGER NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+                    earned_at BIGINT NOT NULL,
+                    PRIMARY KEY (user_id, achievement_id)
+                );
+
+                -- Default Achievements
+                INSERT INTO achievements (name, icon, description, criteria_type, criteria_value)
+                VALUES 
+                    ('Première Victoire', '🏆', 'Gagnez votre premier match en compétition', 'wins', 1),
+                    ('Vétéran', '🎖️', 'Jouez 10 parties en compétition', 'games', 10),
+                    ('Maître', '⭐', 'Atteignez 1500 ELO', 'elo', 1500),
+                    ('Légende', '💎', 'Atteignez 2000 ELO', 'elo', 2000)
+                ON CONFLICT (name) DO NOTHING;
+
                 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
                 CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
                 CREATE INDEX IF NOT EXISTS idx_event_players_event_id ON event_players(event_id);
                 CREATE INDEX IF NOT EXISTS idx_matches_event_round ON matches(event_id, round_number, slot_index);
                 CREATE INDEX IF NOT EXISTS idx_users_auth_provider ON users(auth_provider, auth_provider_user_id);
+                CREATE INDEX IF NOT EXISTS idx_messages_event_id ON messages(event_id, created_at);
+                CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
             `);
             schemaReady = true;
             console.log('[PG] Database schema initialized successfully.');
@@ -416,13 +452,19 @@ function createCompetitionApiPg(options) {
 
     async function getEventMatches(eventId) {
         const rows = await dbAll(
-            `SELECT id, round_number, slot_index, player_a_user_id, player_b_user_id, winner_user_id, status, score_a, score_b
-             FROM matches WHERE event_id = $1 ORDER BY round_number ASC, slot_index ASC`, [eventId]
+            `SELECT m.id, m.round_number, m.slot_index, m.player_a_user_id, m.player_b_user_id, m.winner_user_id, m.status, m.score_a, m.score_b,
+                    ua.pseudo AS player_a_pseudo, ub.pseudo AS player_b_pseudo
+             FROM matches m
+             LEFT JOIN users ua ON ua.id = m.player_a_user_id
+             LEFT JOIN users ub ON ub.id = m.player_b_user_id
+             WHERE m.event_id = $1 ORDER BY m.round_number ASC, m.slot_index ASC`, [eventId]
         );
         return rows.map(row => ({
             id: Number(row.id), round: Number(row.round_number), slot: Number(row.slot_index),
             playerAUserId: row.player_a_user_id == null ? null : Number(row.player_a_user_id),
             playerBUserId: row.player_b_user_id == null ? null : Number(row.player_b_user_id),
+            playerAPseudo: String(row.player_a_pseudo || 'BYE'),
+            playerBPseudo: String(row.player_b_pseudo || 'BYE'),
             winnerUserId: row.winner_user_id == null ? null : Number(row.winner_user_id),
             status: String(row.status), scoreA: Number(row.score_a), scoreB: Number(row.score_b)
         }));
@@ -613,11 +655,56 @@ function createCompetitionApiPg(options) {
         sendJson(res, 200, { ok: true }, corsHeaders);
     }
 
+    async function handleLeaderboard(res, corsHeaders, parsedUrl) {
+        const limit = clampNumber(Number.parseInt(parsedUrl.searchParams.get('limit') || '20', 10), 1, 100);
+        const top = await dbAll(`
+            SELECT pseudo, avatar_url as avatarUrl, elo, wins_total as wins, games_played as gamesCount, level
+            FROM users 
+            ORDER BY elo DESC, wins_total DESC 
+            LIMIT $1
+        `, [limit]);
+        sendJson(res, 200, { ok: true, leaderboard: top }, corsHeaders);
+    }
+
+    async function checkAchievements(userId) {
+        const user = await dbGet('SELECT elo, wins_total, games_played FROM users WHERE id = $1', [userId]);
+        if (!user) return;
+        const potential = await dbAll('SELECT id, criteria_type, criteria_value FROM achievements');
+        const earned = await dbAll('SELECT achievement_id FROM user_achievements WHERE user_id = $1', [userId]);
+        const earnedSet = new Set(earned.map(e => e.achievement_id));
+
+        for (const a of potential) {
+            if (earnedSet.has(a.id)) continue;
+            let condition = false;
+            if (a.criteria_type === 'wins' && user.wins_total >= a.criteria_value) condition = true;
+            if (a.criteria_type === 'games' && user.games_played >= a.criteria_value) condition = true;
+            if (a.criteria_type === 'elo' && user.elo >= a.criteria_value) condition = true;
+            
+            if (condition) {
+                await dbRun('INSERT INTO user_achievements (user_id, achievement_id, earned_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [userId, a.id, nowMs()]);
+            }
+        }
+    }
+
     async function handleProfileMe(req, res, corsHeaders, parsedUrl) {
         const user = await requireUser(req);
         if (!user) throw createHttpError(401, 'Session invalide.');
+        await checkAchievements(user.id);
+        const achievements = await dbAll(`
+            SELECT a.name, a.icon, a.description, ua.earned_at as ts
+            FROM achievements a
+            JOIN user_achievements ua ON a.id = ua.achievement_id
+            WHERE ua.user_id = $1
+            ORDER BY ua.earned_at DESC
+        `, [user.id]);
         const history = await getUserMatchHistory(user.id, parsedUrl.searchParams.get('historyLimit') || '20');
-        sendJson(res, 200, { ok: true, user, history, stats: { gamesPlayed: user.gamesPlayed, wins: user.wins, losses: user.losses, winRate: user.winRate, elo: user.elo, level: user.level } }, corsHeaders);
+        sendJson(res, 200, { 
+            ok: true, 
+            user, 
+            history, 
+            achievements,
+            stats: { gamesPlayed: user.gamesPlayed, wins: user.wins, losses: user.losses, winRate: user.winRate, elo: user.elo, level: user.level } 
+        }, corsHeaders);
     }
 
     async function handleProfileUpdate(req, res, corsHeaders) {
@@ -755,6 +842,43 @@ function createCompetitionApiPg(options) {
         sendJson(res, 200, { ok: true, event: await toEventPayload(updated) }, corsHeaders);
     }
 
+    async function handleEventMessagesGet(req, res, corsHeaders, code) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Authentification requise.');
+        const event = await requireEventByCodeOrThrow(code);
+        // Check if user is in event
+        const isPlayer = await dbGet('SELECT user_id FROM event_players WHERE event_id = $1 AND user_id = $2 LIMIT 1', [event.id, user.id]);
+        if (!isPlayer) throw createHttpError(403, 'Vous devez rejoindre le salon pour voir les messages.');
+
+        const messages = await dbAll(`
+            SELECT m.id, m.content, m.tone, m.created_at as ts, u.pseudo as sender_name, u.avatar_url as sender_avatar
+            FROM messages m
+            JOIN users u ON m.user_id = u.id
+            WHERE m.event_id = $1 
+            ORDER BY m.created_at ASC 
+            LIMIT 50
+        `, [event.id]);
+        
+        sendJson(res, 200, { ok: true, messages }, corsHeaders);
+    }
+
+    async function handleEventMessagePost(req, res, corsHeaders, code) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Authentification requise.');
+        const event = await requireEventByCodeOrThrow(code);
+        const isPlayer = await dbGet('SELECT user_id FROM event_players WHERE event_id = $1 AND user_id = $2 LIMIT 1', [event.id, user.id]);
+        if (!isPlayer) throw createHttpError(403, 'Vous devez rejoindre le salon pour envoyer un message.');
+
+        const body = await readJsonBody(req);
+        const content = String(body.content || '').trim().slice(0, 500);
+        if (!content) throw createHttpError(400, 'Message vide.');
+
+        await dbRun('INSERT INTO messages (event_id, user_id, content, tone, created_at) VALUES ($1, $2, $3, $4, $5)', 
+            [event.id, user.id, content, body.tone || 'info', nowMs()]);
+        
+        sendJson(res, 201, { ok: true }, corsHeaders);
+    }
+
     // --- Main Router ---
     async function routeApi(req, res, corsHeaders, parsedUrl) {
         const method = String(req.method || 'GET').toUpperCase();
@@ -786,6 +910,7 @@ function createCompetitionApiPg(options) {
         if (pathName === '/api/auth/logout' && method === 'POST') { await handleAuthLogout(req, res, corsHeaders); return; }
         if (pathName === '/api/profile/me' && method === 'GET') { await handleProfileMe(req, res, corsHeaders, parsedUrl); return; }
         if (pathName === '/api/profile/me' && method === 'POST') { await handleProfileUpdate(req, res, corsHeaders); return; }
+        if (pathName === '/api/leaderboard' && method === 'GET') { await handleLeaderboard(res, corsHeaders, parsedUrl); return; }
         if (pathName === '/api/events' && method === 'GET') { await handleEventsList(res, corsHeaders, parsedUrl); return; }
         if (pathName === '/api/events' && method === 'POST') { await handleEventsCreate(req, res, corsHeaders); return; }
 
@@ -799,6 +924,8 @@ function createCompetitionApiPg(options) {
             if (action === 'join' && method === 'POST') { await handleEventJoin(req, res, corsHeaders, code); return; }
             if (action === 'leave' && method === 'POST') { await handleEventLeave(req, res, corsHeaders, code); return; }
             if (action === 'start' && method === 'POST') { await handleEventStart(req, res, corsHeaders, code); return; }
+            if (action === 'messages' && method === 'GET') { await handleEventMessagesGet(req, res, corsHeaders, code); return; }
+            if (action === 'messages' && method === 'POST') { await handleEventMessagePost(req, res, corsHeaders, code); return; }
         }
 
         throw createHttpError(404, 'Route API introuvable.');

@@ -13,6 +13,7 @@
         rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style type="text/css">
         @layer utilities {
@@ -656,6 +657,41 @@
             .home-shortcuts {
                 gap: 8px;
             }
+        }
+        
+        /* Competition Filters */
+        .comp-filter-btn {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(248, 250, 252, 0.5);
+            color: #64748b;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .dark .comp-filter-btn {
+            background: rgba(30, 41, 59, 0.5);
+            border-color: rgba(71, 85, 105, 0.6);
+            color: #94a3b8;
+        }
+        
+        .comp-filter-btn.active {
+            background: rgba(19, 127, 236, 0.12);
+            border-color: rgba(19, 127, 236, 0.45);
+            color: #137fec;
+            box-shadow: 0 0 0 1px rgba(19, 127, 236, 0.22);
+        }
+        
+        .dark .comp-filter-btn.active {
+            color: #93c5fd;
+            background: rgba(19, 127, 236, 0.18);
+            border-color: rgba(96, 165, 250, 0.55);
+        }
+        
+        .comp-filter-btn:hover:not(.active) {
+            border-color: rgba(19, 127, 236, 0.3);
+            background: rgba(19, 127, 236, 0.05);
         }
         
     </style>
@@ -1491,25 +1527,74 @@
                 <div id="compStatus" class="text-center text-xs font-bold py-2.5 rounded-2xl hidden"></div>
 
                 <!-- Tabs matching home style -->
-                <div class="flex p-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/40 mb-5">
-                    <button onclick="switchCompTab('events')" id="btnTabEvents" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase">
+                <div class="flex p-1 gap-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/40 mb-5 overflow-x-auto no-scrollbar">
+                    <button onclick="switchCompTab('events')" id="btnTabEvents" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase whitespace-nowrap px-2">
                         <span class="material-symbols-outlined text-[16px]">sports_esports</span>SALONS
                     </button>
-                    <button onclick="switchCompTab('account')" id="btnTabAccount" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all text-slate-400 uppercase">
-                        <span class="material-symbols-outlined text-[16px]">person</span>COMPTE
+                    <button onclick="switchCompTab('leaderboard')" id="btnTabLeaderboard" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all text-slate-400 uppercase whitespace-nowrap px-2">
+                        <span class="material-symbols-outlined text-[16px]">emoji_events</span>TOP
                     </button>
-                    <button onclick="switchCompTab('stats')" id="btnTabStats" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all text-slate-400 uppercase">
+                    <button onclick="switchCompTab('stats')" id="btnTabStats" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all text-slate-400 uppercase whitespace-nowrap px-2">
                         <span class="material-symbols-outlined text-[16px]">bar_chart</span>STATS
+                    </button>
+                    <button onclick="switchCompTab('account')" id="btnTabAccount" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all text-slate-400 uppercase whitespace-nowrap px-2">
+                        <span class="material-symbols-outlined text-[16px]">person</span>MOI
                     </button>
                 </div>
 
                 <!-- Tab content: EVENTS -->
                 <div id="tabEvents" class="comp-tab space-y-5">
+                    <!-- Filtres de recherche -->
+                    <section class="space-y-3">
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[16px]">search</span>
+                                <input id="compSearchInput" type="text" placeholder="Rechercher un salon..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-9 pr-3 py-2 text-xs font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white" oninput="filterCompEvents()">
+                            </div>
+                            <button onclick="toggleCompFilters()" id="btnToggleFilters" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary/40 transition-colors">
+                                <span class="material-symbols-outlined text-[18px] text-slate-600 dark:text-slate-300">tune</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Filtres avancés (cachés par défaut) -->
+                        <div id="compFiltersPanel" class="hidden space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                            <div class="flex gap-2 flex-wrap">
+                                <button onclick="setCompFilter('status', 'all')" class="comp-filter-btn active" data-filter="status" data-value="all">
+                                    <span class="text-[10px] font-black uppercase tracking-wider">Tous</span>
+                                </button>
+                                <button onclick="setCompFilter('status', 'lobby')" class="comp-filter-btn" data-filter="status" data-value="lobby">
+                                    <span class="text-[10px] font-black uppercase tracking-wider">● En Attente</span>
+                                </button>
+                                <button onclick="setCompFilter('status', 'started')" class="comp-filter-btn" data-filter="status" data-value="started">
+                                    <span class="text-[10px] font-black uppercase tracking-wider">▶ En Cours</span>
+                                </button>
+                                <button onclick="setCompFilter('status', 'completed')" class="comp-filter-btn" data-filter="status" data-value="completed">
+                                    <span class="text-[10px] font-black uppercase tracking-wider">✓ Terminés</span>
+                                </button>
+                            </div>
+                            <div class="flex gap-2 flex-wrap">
+                                <button onclick="setCompFilter('mode', 'all')" class="comp-filter-btn active" data-filter="mode" data-value="all">
+                                    <span class="text-[10px] font-black uppercase tracking-wider">Tous modes</span>
+                                </button>
+                                <button onclick="setCompFilter('mode', 'classic')" class="comp-filter-btn" data-filter="mode" data-value="classic">
+                                    <span class="text-[10px] font-black uppercase tracking-wider">⚡ Classic</span>
+                                </button>
+                                <button onclick="setCompFilter('mode', 'tempete')" class="comp-filter-btn" data-filter="mode" data-value="tempete">
+                                    <span class="text-[10px] font-black uppercase tracking-wider">🌪️ Tempête</span>
+                                </button>
+                                <button onclick="setCompFilter('mode', 'rapide')" class="comp-filter-btn" data-filter="mode" data-value="rapide">
+                                    <span class="text-[10px] font-black uppercase tracking-wider">🚀 Rapide</span>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                    
                     <section class="space-y-4">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <div class="size-2 rounded-full bg-emerald-400 animate-pulse"></div>
                                 <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Salons Publics</h3>
+                                <span id="compEventsCount" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-bold text-slate-500">0</span>
                             </div>
                             <button onclick="refreshCompEvents()" class="home-shortcut-tile bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center border border-slate-200/50 dark:border-slate-700/30 shadow-sm active:rotate-180 transition-all duration-500">
                                 <span class="material-symbols-outlined text-[22px] text-slate-500 dark:text-slate-400">refresh</span>
@@ -1559,6 +1644,33 @@
                     </section>
                 </div>
 
+                <!-- Tab content: LEADERBOARD -->
+                <div id="tabLeaderboard" class="comp-tab hidden space-y-5">
+                    <section class="p-6 rounded-3xl border border-slate-200 dark:border-slate-700/50 shadow-lg bg-white dark:bg-slate-800/80">
+                         <div class="flex items-center justify-between mb-6">
+                             <div class="flex items-center gap-2">
+                                 <div class="size-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                                     <span class="material-symbols-outlined text-amber-500 text-[18px]">workspace_premium</span>
+                                 </div>
+                                 <h3 class="text-sm font-black tracking-tight text-slate-900 dark:text-white">Meilleurs Joueurs</h3>
+                             </div>
+                             <button onclick="refreshCompLeaderboard()" class="size-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/40 text-slate-400 hover:text-primary transition-colors">
+                                 <span class="material-symbols-outlined text-[18px]">refresh</span>
+                             </button>
+                         </div>
+                         <div id="compLeaderboardList" class="space-y-2">
+                             <!-- Skeleton -->
+                             <div class="animate-pulse flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                                 <div class="size-10 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                                 <div class="flex-1 space-y-2">
+                                     <div class="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                     <div class="h-2 w-16 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                 </div>
+                             </div>
+                         </div>
+                    </section>
+                </div>
+
                 <!-- Tab content: ACCOUNT -->
                 <div id="tabAccount" class="comp-tab hidden space-y-5">
                     <!-- Logged-In Profile View -->
@@ -1601,6 +1713,19 @@
                                 <div class="py-3 px-2 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/40 text-center">
                                     <p class="text-lg font-black text-slate-900 dark:text-white" id="compProfileGames">0</p>
                                     <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">PARTIES</p>
+                                </div>
+                            </div>
+
+                            <!-- Achievements Summary -->
+                            <div id="compAchievementsSection" class="space-y-3 pt-2">
+                                <div class="flex items-center justify-between">
+                                    <h5 class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[14px]">military_tech</span>Mes Succès
+                                    </h5>
+                                    <span id="compAchCount" class="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">0</span>
+                                </div>
+                                <div id="compAchievementsList" class="flex flex-wrap gap-2.5">
+                                    <!-- Succès insérés ici -->
                                 </div>
                             </div>
 
@@ -1771,6 +1896,18 @@
                         </div>
                     </section>
 
+                    <!-- ELO Graph -->
+                    <section class="relative p-5 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700/50 shadow-lg bg-white dark:bg-slate-800/80">
+                        <div class="space-y-4">
+                            <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 mb-2">
+                                <span class="material-symbols-outlined text-[14px]">show_chart</span>Évolution ELO
+                            </h3>
+                            <div class="h-40 w-full relative">
+                                <canvas id="compEloChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
+
                     <!-- Match History -->
                     <section class="relative p-5 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700/50 shadow-lg bg-white dark:bg-slate-800/80">
                         <div>
@@ -1797,7 +1934,12 @@
                              <div class="text-center space-y-1">
                                  <div id="compDetailStatus" class="inline-block px-3 py-1 rounded-full bg-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">En cours</div>
                                  <h2 id="compDetailName" class="text-2xl font-black">Nom Salon</h2>
-                                 <p id="compDetailCode" class="text-xs text-slate-500 uppercase tracking-widest">CODE: ABC123</p>
+                                 <div class="flex items-center justify-center gap-2">
+                                     <p id="compDetailCode" class="text-[10px] text-slate-500 font-mono tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">CODE: ABC123</p>
+                                     <button onclick="copyCompCode(selectedCompCode)" class="size-6 flex items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors hover:scale-110 active:scale-90">
+                                         <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                                     </button>
+                                 </div>
                              </div>
 
                              <div class="grid grid-cols-2 gap-2">
@@ -1808,6 +1950,27 @@
                              <div class="space-y-4 pt-4">
                                  <h3 class="text-sm font-black border-l-4 border-primary pl-3">Joueurs</h3>
                                  <div id="compDetailPlayers" class="space-y-2"></div>
+                             </div>
+
+                             <!-- Discussion -->
+                             <div id="compChatSection" class="hidden space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                 <div class="flex items-center justify-between">
+                                     <h3 class="text-sm font-black border-l-4 border-primary pl-3">Discussion</h3>
+                                     <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">En direct</span>
+                                 </div>
+                                 <div id="compChatMessages" class="h-48 overflow-y-auto space-y-3 no-scrollbar p-1">
+                                     <!-- Messages insérés ici -->
+                                     <div class="flex flex-col items-center justify-center py-8 opacity-40">
+                                         <span class="material-symbols-outlined text-3xl mb-1">chat_bubble</span>
+                                         <p class="text-[10px] uppercase font-bold tracking-widest">Aucun message</p>
+                                     </div>
+                                 </div>
+                                 <div class="flex gap-2 bg-slate-100 dark:bg-slate-800/60 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                     <input id="compChatMessageInput" type="text" placeholder="Écrire un message..." class="flex-1 bg-transparent px-3 py-2 text-xs font-semibold outline-none text-slate-900 dark:text-white" onkeydown="if(event.key==='Enter') handleCompMessageSubmit()">
+                                     <button onclick="handleCompMessageSubmit()" class="size-9 bg-primary text-white rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-primary/20">
+                                         <span class="material-symbols-outlined text-[18px]">send</span>
+                                     </button>
+                                 </div>
                              </div>
 
                              <div class="space-y-4 pt-4">
@@ -5476,6 +5639,9 @@
                 if (soundEnabled) {
                     playSound('complete');
                 }
+                if (typeof triggerVictoryConfetti === 'function') {
+                    triggerVictoryConfetti();
+                }
             }
 
             async showGameOverScreen() {
@@ -5620,6 +5786,24 @@
 
                 if (soundEnabled) {
                     playSound('complete');
+                }
+
+                // Competition Match Reporting
+                if (window.activeCompMatch) {
+                    // Simple heuristic for winner in competition mode:
+                    // If current user pseudo matches winner name, or if user is owner.
+                    // But backend also validates.
+                    const me = compUser ? compUser.id : null;
+                    const winnerUserId = (winner.score > sortedPlayers[1].score) ? (winner.id || me) : (me);
+                    apiComp(`/api/events/${window.activeCompMatch.eventCode}/matches/${window.activeCompMatch.id}/result`, 'POST', {
+                        winnerUserId: winnerUserId,
+                        scoreA: this.players[0].score,
+                        scoreB: this.players[1].score
+                    }).then(() => {
+                        showToast('Résultat de compétition rapporté !', 'success');
+                        window.activeCompMatch = null;
+                        refreshCompProfile();
+                    }).catch(err => console.error('Match report failed:', err));
                 }
             }
 
@@ -10759,6 +10943,20 @@
             }
         }
 
+        window.triggerVictoryConfetti = function() {
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const colors = ['#137fec', '#10b981', '#fbbf24', '#f472b6', '#818cf8'];
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    const x = centerX + (Math.random() - 0.5) * 300;
+                    const y = centerY + (Math.random() - 0.5) * 200;
+                    const c = colors[i % colors.length];
+                    triggerConfetti(x, y, c);
+                }, i * 250);
+            }
+        }
+
         const themeToggle = document.getElementById('themeToggle');
         const themeIcon = document.getElementById('themeIcon');
 
@@ -10784,17 +10982,25 @@
         }
     
         // --- COMPETITION MODE LOGIC ---
-        const COMP_API_BASE = 'https://jeu-points.onrender.com';
+        const COMP_API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000' 
+            : 'https://jeu-points.onrender.com';
         const COMP_TOKEN_KEY = 'points.api.token';
         let compToken = localStorage.getItem(COMP_TOKEN_KEY) || '';
         let compUser = null;
         let selectedCompCode = '';
+        let activeCompMatch = null; // { id, eventCode, mode }
 
         async function apiComp(path, method = 'GET', body = null) {
             const headers = { 'Content-Type': 'application/json' };
             if (compToken) headers.Authorization = `Bearer ${compToken}`;
             try {
                 const response = await fetch(`${COMP_API_BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : null });
+                if (response.status === 401) {
+                    console.warn('Session expirée (401)');
+                    compToken = ''; localStorage.removeItem(COMP_TOKEN_KEY);
+                    updateHomeProfileButton();
+                }
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok || data.ok === false) throw new Error(data.error || `Erreur API (${response.status})`);
                 return data;
@@ -10804,26 +11010,95 @@
         window.switchCompTab = function(tabId) {
             document.querySelectorAll('.comp-tab').forEach(t => t.classList.add('hidden'));
             const content = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-            if(content) content.classList.remove('hidden');
+            if (content) content.classList.remove('hidden');
+            
             const tabConfig = {
                 events: { icon: 'sports_esports', label: 'SALONS' },
-                account: { icon: 'person', label: 'COMPTE' },
-                stats: { icon: 'bar_chart', label: 'STATS' }
+                leaderboard: { icon: 'emoji_events', label: 'TOP' },
+                stats: { icon: 'bar_chart', label: 'STATS' },
+                account: { icon: 'person', label: 'MOI' }
             };
+            
             Object.keys(tabConfig).forEach(t => {
                 const btn = document.getElementById('btnTab' + t.charAt(0).toUpperCase() + t.slice(1));
                 if (btn) {
                     const cfg = tabConfig[t];
                     if (t === tabId) {
-                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase";
+                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase whitespace-nowrap px-2";
                     } else {
-                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all text-slate-400 uppercase";
+                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all text-slate-400 uppercase whitespace-nowrap px-2";
                     }
                     btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">${cfg.icon}</span>${cfg.label}`;
                 }
             });
+
             if (tabId === 'account' || tabId === 'stats') refreshCompProfile();
+            if (tabId === 'leaderboard') refreshCompLeaderboard();
             if (tabId === 'events') refreshCompEvents();
+        }
+
+        window.startCompMatch = function(matchId, mode, p1Name, p2Name, p1Id, p2Id) {
+            activeCompMatch = { id: matchId, eventCode: selectedCompCode, mode: mode, p1Id, p2Id };
+            if (typeof closeCompDetail === 'function') closeCompDetail();
+            
+            const storm = (mode === 'tempete' || mode === 'tempête');
+            const blitz = (mode === 'rapide');
+            const players = [
+                { name: p1Name || 'Joueur A', color: '#137fec', score: 0, isBot: false, id: p1Id },
+                { name: p2Name || 'Joueur B', color: '#6366f1', score: 0, isBot: false, id: p2Id }
+            ];
+            
+            // Initialize global game instance
+            if (typeof Game === 'function') {
+                window.game = new Game(players, false, 8, { blitz, storm });
+            }
+            
+            // Navigate to game screen
+            if (typeof navToScreen === 'function') {
+                navToScreen('screenGame');
+            } else {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                const sg = document.getElementById('screenGame');
+                if (sg) sg.classList.add('active');
+            }
+            
+            showToast('Match de compétition prêt !', 'info');
+        }
+
+        window.refreshCompLeaderboard = async function() {
+            const list = document.getElementById('compLeaderboardList');
+            if (!list) return;
+            try {
+                const res = await apiComp('/api/leaderboard');
+                const leaderboard = res.leaderboard || [];
+                if (leaderboard.length === 0) {
+                    list.innerHTML = '<p class=\"text-center py-8 opacity-40 text-xs font-medium\">Aucun joueur classé.</p>';
+                    return;
+                }
+                list.innerHTML = leaderboard.map((p, idx) => {
+                    const rank = idx + 1;
+                    const isTop3 = rank <= 3;
+                    const rankColor = rank === 1 ? 'text-amber-500' : rank === 2 ? 'text-slate-400' : rank === 3 ? 'text-amber-700' : 'text-slate-300';
+                    return `
+                        <div class=\"flex items-center gap-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50\">
+                            <div class=\"size-8 flex items-center justify-center font-black ${rankColor} text-lg\">
+                                ${isTop3 ? '🏆' : rank}
+                            </div>
+                            <div class=\"size-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex-shrink-0\">
+                                ${p.avatarUrl ? `<img src=\"${p.avatarUrl}\" class=\"size-full object-cover\">` : `<span class=\"material-symbols-outlined text-2xl opacity-20 flex items-center justify-center h-full\">person</span>`}
+                            </div>
+                            <div class=\"flex-1 min-w-0\">
+                                <p class=\"text-xs font-black truncate text-slate-900 dark:text-white\">${p.pseudo}</p>
+                                <p class=\"text-[9px] text-slate-400 uppercase font-bold tracking-widest\">${p.gamesCount} parties • Niv. ${p.level}</p>
+                            </div>
+                            <div class=\"text-right\">
+                                <p class=\"text-sm font-black text-primary\">${p.elo}</p>
+                                <p class=\"text-[8px] text-slate-400 uppercase font-bold tracking-tight\">ELO</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) { console.error('Leaderboard error:', err); }
         }
 
         let isRegisterMode = false;
@@ -11097,7 +11372,7 @@
             }
         }
 
-        async function refreshCompProfile() {
+        window.refreshCompProfile = async function() {
             if (!compToken) return;
             try {
                 const res = await apiComp('/api/profile/me?historyLimit=10');
@@ -11135,8 +11410,125 @@
 
                 // Rank badge & progress
                 updateRankDisplay(elo);
-            } catch (err) { console.error(err); }
+
+                // Achievements
+                const achList = (res.achievements || []);
+                const achContainer = document.getElementById('compAchievementsList');
+                const achCount = document.getElementById('compAchCount');
+                if(achCount) achCount.textContent = achList.length;
+                if(achContainer) {
+                    if(achList.length === 0) {
+                        achContainer.innerHTML = '<p class="text-[9px] text-slate-400 italic">Aucun succès débloqué</p>';
+                    } else {
+                        achContainer.innerHTML = achList.map(a => `
+                            <div class="group relative size-11 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center cursor-help transition-all hover:scale-110 hover:border-primary/40" title="${a.description}">
+                                <span class="text-xl scale-90 group-hover:scale-110 transition-transform">${a.icon}</span>
+                                <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[8px] font-bold rounded-md opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity shadow-lg">
+                                    ${a.name}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+
+                // Match history in Stats tab
+                const history = (res.history || []);
+                const historyList = document.getElementById('compHistoryList');
+                if(historyList) {
+                    if (history.length === 0) {
+                        historyList.innerHTML = '<div class="flex flex-col items-center justify-center py-8 opacity-50"><span class="material-symbols-outlined text-3xl mb-2 text-slate-300 dark:text-slate-600">sports_score</span><p class="text-[11px] text-slate-400 font-medium">Aucune partie terminée</p></div>';
+                    } else {
+                        historyList.innerHTML = history.map(h => {
+                            const isWin = h.winnerUserId === compUser.id;
+                            const resColor = isWin ? 'text-emerald-500' : 'text-red-400';
+                            const resLabel = isWin ? 'VICTOIRE' : 'DÉFAITE';
+                            const playedAt = h.ts || h.created_at || Date.now();
+                            return `
+                                <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/40">
+                                    <div class="flex items-center gap-3">
+                                        <div class="size-8 rounded-full ${isWin ? 'bg-emerald-500/10' : 'bg-red-500/10'} flex items-center justify-center ${resColor}">
+                                            <span class="material-symbols-outlined text-[16px]">${isWin ? 'emoji_events' : 'close'}</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] font-black uppercase tracking-widest ${resColor}">${resLabel}</p>
+                                            <p class="text-[9px] text-slate-400">Score: ${h.score_a || h.scoreA || 0} - ${h.score_b || h.scoreB || 0}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-black text-slate-900 dark:text-white">${h.elo_delta > 0 ? '+' : ''}${h.elo_delta || 0} ELO</p>
+                                        <p class="text-[8px] text-slate-400 uppercase tracking-widest">${new Date(playedAt).toLocaleDateString('fr-FR')}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+
+                // ELO Chart
+                renderEloChart(elo, res.history || []);
+            } catch (err) { console.error('Refresh profile error:', err); }
         }
+
+        let eloChartInstance = null;
+         function renderEloChart(currentElo, history) {
+             const ctx = document.getElementById('compEloChart');
+             if (!ctx) return;
+
+             // Prepare data from history
+             // We start from current ELO and go backwards
+             let points = [currentElo];
+             let labels = ['Aujourd\'hui'];
+             
+             let runningElo = currentElo;
+             // Take last 7 games
+             const games = history.slice(0, 7);
+             games.forEach((m, i) => {
+                 // Estimation simple: +/- 20 points par match si on n'a pas le delta exact
+                 // Mais on peut faire mieux si on avait le delta
+                 const delta = m.result === 'win' ? 24 : -24; 
+                 runningElo -= delta;
+                 points.unshift(runningElo);
+                 labels.unshift(new Date(m.playedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }));
+             });
+
+             if (eloChartInstance) eloChartInstance.destroy();
+
+             const isDark = document.documentElement.classList.contains('dark');
+             const primaryColor = '#137fec';
+
+             eloChartInstance = new Chart(ctx, {
+                 type: 'line',
+                 data: {
+                     labels: labels,
+                     datasets: [{
+                         label: 'ELO',
+                         data: points,
+                         borderColor: primaryColor,
+                         backgroundColor: isDark ? 'rgba(19, 127, 236, 0.1)' : 'rgba(19, 127, 236, 0.05)',
+                         fill: true,
+                         tension: 0.4,
+                         pointRadius: 4,
+                         pointBackgroundColor: primaryColor,
+                         borderWidth: 3
+                     }]
+                 },
+                 options: {
+                     responsive: true,
+                     maintainAspectRatio: false,
+                     plugins: { legend: { display: false } },
+                     scales: {
+                         y: {
+                             grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
+                             ticks: { color: isDark ? '#94a3b8' : '#64748b' }
+                         },
+                         x: {
+                             grid: { display: false },
+                             ticks: { color: isDark ? '#94a3b8' : '#64748b' }
+                         }
+                     }
+                 }
+             });
+         }
 
         function updateRankDisplay(elo) {
             const ranks = [
@@ -11198,49 +11590,150 @@
         window.refreshCompEvents = async function() {
             const list = document.getElementById('compEventsList');
             if(!list) return;
+            
+            // Skeleton loader pendant le chargement
+            list.innerHTML = `
+                <div class="space-y-3">
+                    ${[1,2,3].map(() => `
+                        <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 animate-pulse">
+                            <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-3"></div>
+                            <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-3"></div>
+                            <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
             try {
                 const res = await apiComp('/api/events?limit=20');
                 const events = res.events || [];
-                if (events.length === 0) { list.innerHTML = '<p class=\"text-center text-xs text-slate-500 py-10\">Aucun salon actif.</p>'; return; }
-                list.innerHTML = events.map(e => `
-                    <div onclick=\"openCompDetail('${e.code}')\" class=\"p-4 rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm active:scale-[0.98] transition-all cursor-pointer\">
-                        <div class=\"flex items-center justify-between mb-2\"><span class=\"text-xs font-black uppercase text-primary tracking-widest\">${e.mode}</span><span class=\"text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-bold\">${e.status}</span></div>
-                        <h4 class=\"font-bold text-slate-900 dark:text-white\">${e.name}</h4>
-                        <div class=\"flex items-center justify-between mt-3 text-[10px] text-slate-500 font-bold uppercase tracking-wider\"><span>Hôte: ${e.ownerPseudo}</span><span>${e.playerCount}/${e.maxPlayers} Joueurs</span></div>
-                    </div>`).join('');
-            } catch (err) { list.innerHTML = `<p class=\"text-center text-xs text-red-500 py-10\">Erreur réseau</p>`; }
+                
+                // Mettre en cache les événements
+                compEventsCache = events;
+                
+                // Mettre à jour le compteur
+                const countEl = document.getElementById('compEventsCount');
+                if (countEl) {
+                    countEl.textContent = events.length;
+                }
+                
+                if (events.length === 0) { 
+                    list.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-12 opacity-50">
+                            <span class="material-symbols-outlined text-4xl mb-2 text-slate-300 dark:text-slate-600">sports_esports</span>
+                            <p class="text-xs text-slate-400 font-medium">Aucun salon actif</p>
+                            <p class="text-[10px] text-slate-400 mt-1">Créez le premier !</p>
+                        </div>
+                    `; 
+                    return; 
+                }
+                
+                // Appliquer les filtres actuels
+                filterCompEvents();
+                
+            } catch (err) { 
+                console.error('Error loading events:', err);
+                list.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12">
+                        <span class="material-symbols-outlined text-4xl mb-2 text-red-400">error</span>
+                        <p class="text-xs text-red-500 font-medium">Erreur de chargement</p>
+                        <button onclick="refreshCompEvents()" class="mt-3 px-4 py-2 bg-primary text-white text-[10px] font-bold rounded-lg">Réessayer</button>
+                    </div>
+                `; 
+            }
         }
 
+        let compChatInterval = null;
         window.openCompDetail = async function(code) {
-            selectedCompCode = code; document.getElementById('compEventDetail').classList.remove('hidden');
+            selectedCompCode = code; 
+            document.getElementById('compEventDetail').classList.remove('hidden');
+            
+            // État initial du chat
+            const chatMessages = document.getElementById('compChatMessages');
+            if (chatMessages) chatMessages.innerHTML = '<div class="flex flex-col items-center justify-center py-8 opacity-40"><span class="material-symbols-outlined text-3xl mb-1">chat_bubble</span><p class="text-[10px] uppercase font-bold tracking-widest">Chargement...</p></div>';
+            const chatSection = document.getElementById('compChatSection');
+            if (chatSection) chatSection.classList.add('hidden');
+
+            if (compChatInterval) clearInterval(compChatInterval);
+
             try {
                 const res = await apiComp(`/api/events/${code}`);
                 const e = res.event;
                 document.getElementById('compDetailName').textContent = e.name;
                 document.getElementById('compDetailCode').textContent = 'CODE: ' + e.code;
                 document.getElementById('compDetailStatus').textContent = e.status;
-                document.getElementById('compDetailPlayers').innerHTML = e.players.map(p => `
+                document.getElementById('compDetailPlayers').innerHTML = (e.players || []).map(p => `
                     <div class=\"flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50\">
-                        <div class=\"flex items-center gap-2\"><span class=\"size-2 rounded-full bg-primary\"></span><span class=\"text-xs font-bold\">${p.displayName}</span></div>
+                        <div class=\"flex items-center gap-2\"><span class=\"size-2 rounded-full bg-primary\"></span><span class=\"text-xs font-bold\">${p.displayName || p.pseudo}</span></div>
                         <span class=\"text-[10px] font-black opacity-40\">${p.points} PTS</span>
                     </div>`).join('');
-                document.getElementById('compDetailMatches').innerHTML = (e.matches || []).map(m => `
-                    <div class=\"p-2.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-700/60 text-[10px] flex justify-between items-center\">
-                        <span class=\"opacity-60\">R${m.round}</span>
-                        <span class=\"font-bold\">${m.playerAUserId || 'BYE'} vs ${m.playerBUserId || 'BYE'}</span>
-                        <span class=\"px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-black\">${m.status}</span>
-                    </div>`).join('') || '<p class=\"text-center text-[11px] opacity-40 py-2\">Pas de matchs.</p>';
+                
+                document.getElementById('compDetailMatches').innerHTML = (e.matches || []).map(m => {
+                    const isMyMatch = (compUser && (compUser.id === m.playerAUserId || compUser.id === m.playerBUserId));
+                    const canPlay = isMyMatch && m.status === 'ready' && e.status === 'started';
+                    return `
+                        <div class=\"p-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-900/20 mb-2\">
+                            <div class=\"flex items-center justify-between mb-2\">
+                                <span class=\"text-[9px] font-black uppercase tracking-widest text-slate-400\">Round ${m.round}</span>
+                                <span class=\"text-[9px] px-2 py-0.5 rounded-full ${m.status==='completed'?'bg-emerald-500/10 text-emerald-500':'bg-primary/10 text-primary'} font-black uppercase\">${m.status}</span>
+                            </div>
+                            <div class=\"flex items-center justify-between gap-2\">
+                                <div class=\"flex-1 text-center\">
+                                    <p class=\"text-xs font-bold truncate\">${m.playerAPseudo || 'Bye'}</p>
+                                    <p class=\"text-[10px] font-black text-primary\">${m.scoreA}</p>
+                                </div>
+                                <div class=\"text-[10px] font-black text-slate-300\">VS</div>
+                                <div class=\"flex-1 text-center\">
+                                    <p class=\"text-xs font-bold truncate\">${m.playerBPseudo || 'Bye'}</p>
+                                    <p class=\"text-[10px] font-black text-primary\">${m.scoreB}</p>
+                                </div>
+                            </div>
+                            ${canPlay ? `
+                                <button onclick=\"startCompMatch(${m.id}, '${e.mode}', '${m.playerAPseudo}', '${m.playerBPseudo}', ${m.playerAUserId}, ${m.playerBUserId})\" class=\"w-full mt-3 py-2.5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all focus:outline-none\">
+                                    🔥 Jouer le Match
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('') || '<p class=\"text-center text-[11px] opacity-40 py-8\">En attente de génération...</p>';
+                
                 const me = compUser ? compUser.id : null;
                 const isJoined = e.players.some(p => p.userId === me);
                 const isOwner = (compUser && e.ownerPseudo === compUser.pseudo);
+                
                 document.getElementById('btnJoinComp').classList.toggle('hidden', isJoined);
                 document.getElementById('btnLeaveComp').classList.toggle('hidden', !isJoined);
                 const btnStart = document.getElementById('btnStartComp');
                 if(btnStart) btnStart.classList.toggle('hidden', !isOwner || e.status !== 'open');
+
+                // Intégration du Chat
+                if (chatSection) {
+                    chatSection.classList.toggle('hidden', !isJoined);
+                    if (isJoined) {
+                        refreshCompMessages();
+                        compChatInterval = setInterval(refreshCompMessages, 4000);
+                    }
+                }
             } catch (err) { showToast(err.message, 'error'); }
         }
 
-        window.closeCompDetail = function() { const el = document.getElementById('compEventDetail'); if(el) el.classList.add('hidden'); }
+        window.copyCompCode = function(code) {
+            if (!code) return;
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('Code copié !', 'success');
+            }).catch(() => {
+                showToast('Copie échouée', 'error');
+            });
+        }
+
+        window.closeCompDetail = function() { 
+            const el = document.getElementById('compEventDetail'); 
+            if(el) el.classList.add('hidden'); 
+            if (compChatInterval) {
+                clearInterval(compChatInterval);
+                compChatInterval = null;
+            }
+        }
 
         window.createCompEvent = async function() {
             if (!compToken) return showToast('Connectez-vous.', 'warning');
@@ -11259,12 +11752,291 @@
              try { await apiComp(`/api/events/${selectedCompCode}/join`, 'POST'); showToast('Salon rejoint !', 'success'); openCompDetail(selectedCompCode); refreshCompEvents(); } catch (err) { showToast(err.message, 'error'); }
         }
 
+        // Fonction pour copier le code du salon
+        window.copyCompCode = function(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                showToast(`Code ${code} copié !`, 'success');
+            }).catch(() => {
+                showToast('Impossible de copier', 'error');
+            });
+        }
+
+        // Fonction pour rejoindre rapidement un salon
+        window.quickJoinComp = async function(code) {
+            if (!compToken) {
+                showToast('Connectez-vous pour rejoindre', 'warning');
+                return;
+            }
+            try {
+                await apiComp(`/api/events/${code}/join`, 'POST');
+                showToast('Salon rejoint !', 'success');
+                openCompDetail(code);
+                refreshCompEvents();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        window.refreshCompMessages = async function() {
+            if (!selectedCompCode || !compToken) return;
+            try {
+                const res = await apiComp(`/api/events/${selectedCompCode}/messages`);
+                const messages = res.messages || [];
+                const container = document.getElementById('compChatMessages');
+                if (!container) return;
+
+                if (messages.length === 0) {
+                    container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 opacity-40"><span class="material-symbols-outlined text-3xl mb-1">chat_bubble</span><p class="text-[10px] uppercase font-bold tracking-widest">Aucun message</p></div>';
+                    return;
+                }
+
+                const html = messages.map(m => {
+                    const isMe = compUser && m.sender_name === compUser.pseudo;
+                    return `
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                            <div class="flex items-center gap-1.5 mb-1 px-1">
+                                <span class="text-[8px] font-black uppercase tracking-wider ${isMe ? 'text-primary' : 'text-slate-400'}">${m.sender_name}</span>
+                                <span class="text-[8px] text-slate-300 font-bold">${new Date(m.ts).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}</span>
+                            </div>
+                            <div class="max-w-[85%] px-3 py-2 rounded-2xl text-[11px] font-medium leading-relaxed shadow-sm ${isMe ? 'bg-primary text-white rounded-tr-none' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 rounded-tl-none'}">
+                                ${m.content}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                const shouldScroll = container.scrollTop + container.clientHeight >= container.scrollHeight - 60;
+                container.innerHTML = html;
+                if (shouldScroll) container.scrollTop = container.scrollHeight;
+            } catch (err) { console.warn('Chat Refresh Error:', err); }
+        }
+
+        window.handleCompMessageSubmit = async function() {
+            const input = document.getElementById('compChatMessageInput');
+            const content = input?.value?.trim();
+            if (!content || !selectedCompCode) return;
+            
+            input.value = '';
+            try {
+                await apiComp(`/api/events/${selectedCompCode}/messages`, 'POST', { content });
+                refreshCompMessages();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        // Variables pour les filtres
+        let compEventsCache = [];
+        let compFilters = {
+            status: 'all',
+            mode: 'all',
+            search: ''
+        };
+
+        // Toggle du panneau de filtres
+        window.toggleCompFilters = function() {
+            const panel = document.getElementById('compFiltersPanel');
+            if (panel) {
+                panel.classList.toggle('hidden');
+            }
+        }
+
+        // Définir un filtre
+        window.setCompFilter = function(filterType, value) {
+            compFilters[filterType] = value;
+            
+            // Mettre à jour les boutons actifs
+            document.querySelectorAll(`[data-filter="${filterType}"]`).forEach(btn => {
+                if (btn.dataset.value === value) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Appliquer les filtres
+            filterCompEvents();
+        }
+
+        // Filtrer les événements
+        window.filterCompEvents = function() {
+            const searchInput = document.getElementById('compSearchInput');
+            if (searchInput) {
+                compFilters.search = searchInput.value.toLowerCase();
+            }
+            
+            let filtered = compEventsCache;
+            
+            // Filtre par statut
+            if (compFilters.status !== 'all') {
+                filtered = filtered.filter(e => e.status === compFilters.status);
+            }
+            
+            // Filtre par mode
+            if (compFilters.mode !== 'all') {
+                filtered = filtered.filter(e => e.mode === compFilters.mode);
+            }
+            
+            // Filtre par recherche
+            if (compFilters.search) {
+                filtered = filtered.filter(e => 
+                    e.name.toLowerCase().includes(compFilters.search) ||
+                    e.code.toLowerCase().includes(compFilters.search) ||
+                    e.ownerPseudo.toLowerCase().includes(compFilters.search)
+                );
+            }
+            
+            // Mettre à jour le compteur
+            const countEl = document.getElementById('compEventsCount');
+            if (countEl) {
+                countEl.textContent = filtered.length;
+            }
+            
+            // Afficher les résultats filtrés
+            displayFilteredEvents(filtered);
+        }
+
+        // Afficher les événements filtrés
+        function displayFilteredEvents(events) {
+            const list = document.getElementById('compEventsList');
+            if (!list) return;
+            
+            if (events.length === 0) {
+                list.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 opacity-50">
+                        <span class="material-symbols-outlined text-4xl mb-2 text-slate-300 dark:text-slate-600">search_off</span>
+                        <p class="text-xs text-slate-400 font-medium">Aucun salon trouvé</p>
+                        <button onclick="resetCompFilters()" class="mt-3 px-4 py-2 bg-primary text-white text-[10px] font-bold rounded-lg">Réinitialiser les filtres</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Réutiliser la logique d'affichage existante
+            const getModeIcon = (mode) => {
+                const icons = { 'classic': '⚡', 'tempete': '🌪️', 'rapide': '🚀' };
+                return icons[mode] || '🎮';
+            };
+            
+            const getStatusBadge = (status) => {
+                const badges = {
+                    'lobby': '<span class="text-[9px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 font-black uppercase tracking-wider border border-emerald-500/20">● En Attente</span>',
+                    'started': '<span class="text-[9px] px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 font-black uppercase tracking-wider border border-blue-500/20">▶ En Cours</span>',
+                    'completed': '<span class="text-[9px] px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-500 font-black uppercase tracking-wider border border-slate-500/20">✓ Terminé</span>'
+                };
+                return badges[status] || badges['lobby'];
+            };
+            
+            const getTimeAgo = (timestamp) => {
+                const now = Date.now();
+                const diff = now - timestamp;
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(minutes / 60);
+                const days = Math.floor(hours / 24);
+                
+                if (days > 0) return `Il y a ${days}j`;
+                if (hours > 0) return `Il y a ${hours}h`;
+                if (minutes > 0) return `Il y a ${minutes}min`;
+                return 'À l\'instant';
+            };
+            
+            const getPlayerCountColor = (current, max) => {
+                const ratio = current / max;
+                if (ratio >= 0.8) return 'text-red-500';
+                if (ratio >= 0.5) return 'text-amber-500';
+                return 'text-emerald-500';
+            };
+            
+            list.innerHTML = events.map(e => {
+                const playerCountColor = getPlayerCountColor(e.playerCount, e.maxPlayers);
+                const isFull = e.playerCount >= e.maxPlayers;
+                const canJoin = e.status === 'lobby' && !isFull;
+                
+                return `
+                <div class="group relative p-4 rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 ${e.status === 'lobby' ? 'bg-emerald-500' : e.status === 'started' ? 'bg-blue-500' : 'bg-slate-500'}"></div>
+                    
+                    <div onclick="openCompDetail('${e.code}')" class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">${getModeIcon(e.mode)}</span>
+                                <span class="text-[10px] font-black uppercase text-primary tracking-widest">${e.mode}</span>
+                            </div>
+                            ${getStatusBadge(e.status)}
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-black text-base text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors">${e.name}</h4>
+                            <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                                <span class="flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[12px]">person</span>
+                                    ${e.ownerPseudo}
+                                </span>
+                                <span>•</span>
+                                <span class="flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[12px]">schedule</span>
+                                    ${getTimeAgo(e.createdAt)}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-black ${playerCountColor}">${e.playerCount}/${e.maxPlayers}</span>
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider">Joueurs</span>
+                                ${isFull ? '<span class="text-[9px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 font-bold">COMPLET</span>' : ''}
+                            </div>
+                            <button onclick="event.stopPropagation(); copyCompCode('${e.code}')" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-primary/10 transition-colors group/btn">
+                                <span class="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300 group-hover/btn:text-primary">${e.code}</span>
+                                <span class="material-symbols-outlined text-[14px] text-slate-400 group-hover/btn:text-primary">content_copy</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    ${canJoin ? `
+                    <button onclick="event.stopPropagation(); quickJoinComp('${e.code}')" class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg shadow-lg hover:scale-105 active:scale-95 transition-transform">
+                        <span class="flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">login</span>
+                            Rejoindre
+                        </span>
+                    </button>
+                    ` : ''}
+                </div>
+            `}).join('');
+        }
+
+        // Réinitialiser les filtres
+        window.resetCompFilters = function() {
+            compFilters = { status: 'all', mode: 'all', search: '' };
+            
+            const searchInput = document.getElementById('compSearchInput');
+            if (searchInput) searchInput.value = '';
+            
+            document.querySelectorAll('.comp-filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.value === 'all') {
+                    btn.classList.add('active');
+                }
+            });
+            
+            filterCompEvents();
+        }
+
         window.leaveTargetComp = async function() {
-             try { await apiComp(`/api/events/${selectedCompCode}/leave`, 'POST'); showToast('Salon quitté.', 'info'); openCompDetail(selectedCompCode); refreshCompEvents(); } catch (err) { showToast(err.message, 'error'); }
+            if (!confirm('Voulez-vous vraiment quitter ce salon ?')) return;
+            try { 
+                await apiComp(`/api/events/${selectedCompCode}/leave`, 'POST'); 
+                showToast('Salon quitté.', 'info'); 
+                closeCompDetail(); 
+                refreshCompEvents(); 
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
         window.startTargetComp = async function() {
-             try { await apiComp(`/api/events/${selectedCompCode}/start`, 'POST'); showToast('Lancement !', 'success'); openCompDetail(selectedCompCode); } catch (err) { showToast(err.message, 'error'); }
+            try { 
+                await apiComp(`/api/events/${selectedCompCode}/start`, 'POST'); 
+                showToast('Lancement !', 'success'); 
+                closeCompDetail(); // Fermer le détail pour montrer que ça a commencé
+                refreshCompEvents(); // Rafraichir la liste
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
         window.handleCompOAuth = async function(provider) {
