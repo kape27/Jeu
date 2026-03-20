@@ -575,6 +575,7 @@ function createCompetitionApiPg(options) {
             );
             createdUser = result;
         } catch (error) {
+            console.error('[AUTH_REG_ERROR]', error);
             if (isUniqueViolation(error)) throw createHttpError(409, 'Email ou pseudo deja utilise.');
             throw error;
         }
@@ -760,7 +761,25 @@ function createCompetitionApiPg(options) {
         const pathName = parsedUrl.pathname;
         const userIp = getClientIp(req);
 
-        if (pathName === '/api/health' && method === 'GET') { const s = getRoomsStats(); sendJson(res, 200, { ok: true, rooms: s.rooms, clients: s.clients, maxPlayers, db: 'postgresql' }, corsHeaders); return; }
+        if (pathName === '/api/health' && method === 'GET') {
+            const stats = getRoomsStats();
+            let dbStatus = 'postgresql (error)';
+            try {
+                const res = await pool.query('SELECT 1');
+                if (res.rowCount === 1) dbStatus = 'postgresql (ok)';
+            } catch (err) {
+                console.error('[HEALTH_CHECK_ERROR]', err);
+            }
+
+            sendJson(res, 200, {
+                ok: true,
+                rooms: stats.rooms,
+                clients: stats.clients,
+                maxPlayers,
+                db: dbStatus
+            }, corsHeaders);
+            return;
+        }
         if (pathName === '/api/auth/register' && method === 'POST') { await handleAuthRegister(req, res, corsHeaders, userIp); return; }
         if (pathName === '/api/auth/login' && method === 'POST') { await handleAuthLogin(req, res, corsHeaders, userIp); return; }
         if (pathName === '/api/auth/me' && method === 'GET') { await handleAuthMe(req, res, corsHeaders); return; }

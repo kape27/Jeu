@@ -1472,28 +1472,26 @@
         </div>
 
         <!-- SCREEN 4.5: COMPETITION -->
-        <div id="screenCompetition" class="relative z-10 flex flex-1 flex-col w-full h-full screen-hidden">
-            <!-- Premium Header with gradient -->
-            <header class="relative flex items-center p-4 pb-3 justify-between shrink-0 z-20 overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-primary/10 to-violet-500/10 dark:from-amber-500/5 dark:via-primary/5 dark:to-violet-500/5"></div>
-                <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+        <div id="screenCompetition" class="home-screen relative z-10 flex flex-1 flex-col w-full h-full screen-hidden">
+            <!-- Header matching home style -->
+            <header class="home-header relative z-20 flex items-center justify-between shrink-0">
                 <button onclick="navToScreen('screenMainMenu')"
-                    class="relative w-11 h-11 flex items-center justify-center bg-white/60 dark:bg-slate-800/60 rounded-2xl transition-transform active:scale-95 text-slate-900 dark:text-white border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
-                    <span class="material-symbols-outlined text-[22px]">arrow_back</span>
+                    class="home-header-btn flex items-center justify-center bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-[26px]">arrow_back</span>
                 </button>
-                <div class="relative flex items-center gap-2.5">
-                    <span class="material-symbols-outlined text-amber-500 text-[22px]">trophy</span>
-                    <h1 class="text-sm font-black tracking-[0.2em] uppercase">Compétition</h1>
+                <div class="flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-amber-500 text-[26px]">trophy</span>
+                    <h1 class="text-base font-black tracking-[0.15em] uppercase text-slate-900 dark:text-white">Compétition</h1>
                 </div>
-                <div class="w-11 h-11"></div>
+                <div class="home-header-spacer"></div>
             </header>
 
-            <main class="flex-1 flex flex-col px-5 space-y-5 max-w-lg mx-auto w-full overflow-y-auto no-scrollbar pb-10 pt-3">
+            <main class="home-main flex-1 overflow-y-auto mx-auto">
                 <!-- Status bar -->
                 <div id="compStatus" class="text-center text-xs font-bold py-2.5 rounded-2xl hidden"></div>
 
-                <!-- Premium Tabs with icons -->
-                <div class="flex p-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/40">
+                <!-- Tabs matching home style -->
+                <div class="flex p-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/40 mb-5">
                     <button onclick="switchCompTab('events')" id="btnTabEvents" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-black tracking-wider rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase">
                         <span class="material-symbols-outlined text-[16px]">sports_esports</span>SALONS
                     </button>
@@ -1511,10 +1509,10 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <div class="size-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                                <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">Salons Publics</h3>
+                                <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Salons Publics</h3>
                             </div>
-                            <button onclick="refreshCompEvents()" class="size-9 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 active:rotate-180 transition-all duration-500 border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
-                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                            <button onclick="refreshCompEvents()" class="home-shortcut-tile bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center border border-slate-200/50 dark:border-slate-700/30 shadow-sm active:rotate-180 transition-all duration-500">
+                                <span class="material-symbols-outlined text-[22px] text-slate-500 dark:text-slate-400">refresh</span>
                             </button>
                         </div>
                         <div id="compEventsList" class="space-y-3">
@@ -1525,22 +1523,21 @@
                         </div>
                     </section>
 
-                    <!-- Create Tournament Card -->
-                    <section class="relative p-6 rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-700/40 shadow-sm">
-                        <div class="absolute inset-0 bg-gradient-to-br from-white via-white to-primary/5 dark:from-slate-900/60 dark:via-slate-900/60 dark:to-primary/10"></div>
-                        <div class="relative space-y-4">
+                    <!-- Create Tournament Card matching home style -->
+                    <section class="relative p-6 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700/50 shadow-lg bg-white dark:bg-slate-800/80">
+                        <div class="space-y-4">
                             <div class="flex items-center gap-2.5">
                                 <div class="size-9 rounded-xl bg-primary/10 flex items-center justify-center">
                                     <span class="material-symbols-outlined text-primary text-[18px]">add_circle</span>
                                 </div>
-                                <h3 class="text-sm font-black tracking-tight">Créer un Salon</h3>
+                                <h3 class="text-sm font-black tracking-tight text-slate-900 dark:text-white">Créer un Salon</h3>
                             </div>
                             <div class="space-y-3">
-                                <input id="newCompName" type="text" placeholder="Nom du tournoi" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                <input id="newCompName" type="text" placeholder="Nom du tournoi" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white">
                                 <div class="grid grid-cols-2 gap-3">
                                     <div class="relative">
                                         <label class="absolute -top-2 left-3 bg-white dark:bg-slate-800 px-1.5 text-[8px] font-black uppercase tracking-widest text-slate-400 z-10">Mode</label>
-                                        <select id="newCompMode" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                        <select id="newCompMode" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-semibold appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white">
                                             <option value="classic">⚡ Classic</option>
                                             <option value="tempete">🌪️ Tempête</option>
                                             <option value="rapide">🚀 Rapide</option>
@@ -1548,10 +1545,10 @@
                                     </div>
                                     <div class="relative">
                                         <label class="absolute -top-2 left-3 bg-white dark:bg-slate-800 px-1.5 text-[8px] font-black uppercase tracking-widest text-slate-400 z-10">Joueurs</label>
-                                        <input id="newCompMax" type="number" value="8" min="2" max="64" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                        <input id="newCompMax" type="number" value="8" min="2" max="64" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white">
                                     </div>
                                 </div>
-                                <button onclick="createCompEvent()" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 text-white font-black rounded-2xl active:scale-[0.98] transition-all text-xs uppercase tracking-[0.2em] shadow-lg shadow-primary/25 border border-primary/20">
+                                <button onclick="createCompEvent()" class="w-full py-4 bg-primary text-white font-black rounded-2xl active:scale-[0.98] transition-all text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/30">
                                     <span class="flex items-center justify-center gap-2">
                                         <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
                                         Créer le Tournoi
@@ -1565,21 +1562,20 @@
                 <!-- Tab content: ACCOUNT -->
                 <div id="tabAccount" class="comp-tab hidden space-y-5">
                     <!-- Logged-In Profile View -->
-                    <section class="relative p-6 rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-700/40 shadow-sm">
-                        <div class="absolute inset-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/60 dark:to-slate-800/30"></div>
-                        <div id="compUserInfo" class="hidden relative space-y-6">
+                    <section class="relative p-6 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700/50 shadow-lg bg-white dark:bg-slate-800/80">
+                        <div id="compUserInfo" class="hidden space-y-6">
                             <!-- Profile Card -->
                             <div class="flex items-center gap-5">
                                 <div id="compAvatarContainer" class="relative group cursor-pointer" onclick="toggleCompProfileEdit()">
                                     <div id="compAvatarImg" class="size-[72px] rounded-[20px] bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center overflow-hidden ring-2 ring-white dark:ring-slate-700 shadow-lg transition-transform group-hover:scale-105">
                                          <span class="material-symbols-outlined text-4xl text-primary/40">person</span>
                                     </div>
-                                    <div class="absolute -bottom-1 -right-1 size-7 bg-gradient-to-br from-primary to-blue-600 text-white rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-800 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div class="absolute -bottom-1 -right-1 size-7 bg-primary text-white rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-800 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                                         <span class="material-symbols-outlined text-[14px]">edit</span>
                                     </div>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <h4 id="compUserName" class="text-lg font-black tracking-tight truncate">Pseudo</h4>
+                                    <h4 id="compUserName" class="text-lg font-black tracking-tight truncate text-slate-900 dark:text-white">Pseudo</h4>
                                     <p id="compUserEmail" class="text-[11px] text-slate-400 font-medium truncate">email@example.com</p>
                                     <div class="mt-1.5 flex items-center gap-2">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[9px] font-black uppercase tracking-wider">
@@ -1594,16 +1590,16 @@
 
                             <!-- Inline Stats Summary -->
                             <div class="grid grid-cols-3 gap-2">
-                                <div class="py-3 px-2 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40 text-center">
+                                <div class="py-3 px-2 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/40 text-center">
                                     <p class="text-lg font-black text-primary" id="compProfileElo">1200</p>
                                     <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">ELO</p>
                                 </div>
-                                <div class="py-3 px-2 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40 text-center">
+                                <div class="py-3 px-2 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/40 text-center">
                                     <p class="text-lg font-black text-emerald-500" id="compProfileWins">0</p>
                                     <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">VICTOIRES</p>
                                 </div>
-                                <div class="py-3 px-2 rounded-2xl bg-white/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40 text-center">
-                                    <p class="text-lg font-black" id="compProfileGames">0</p>
+                                <div class="py-3 px-2 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/40 text-center">
+                                    <p class="text-lg font-black text-slate-900 dark:text-white" id="compProfileGames">0</p>
                                     <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">PARTIES</p>
                                 </div>
                             </div>
@@ -1617,22 +1613,22 @@
                                 <div class="space-y-3">
                                     <div class="relative">
                                         <label class="absolute -top-2 left-3 bg-white dark:bg-slate-800 px-1.5 text-[8px] font-black uppercase tracking-widest text-slate-400 z-10">Pseudo</label>
-                                        <input id="editCompPseudo" type="text" placeholder="Nouveau pseudo" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                        <input id="editCompPseudo" type="text" placeholder="Nouveau pseudo" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white">
                                     </div>
                                     <div class="relative">
                                         <label class="absolute -top-2 left-3 bg-white dark:bg-slate-800 px-1.5 text-[8px] font-black uppercase tracking-widest text-slate-400 z-10">Avatar URL</label>
-                                        <input id="editCompAvatar" type="url" placeholder="https://example.com/photo.jpg" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                        <input id="editCompAvatar" type="url" placeholder="https://example.com/photo.jpg" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white">
                                     </div>
                                     <div class="flex gap-3 pt-1">
                                         <button onclick="toggleCompProfileEdit()" class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-2xl text-[10px] uppercase tracking-wider active:scale-[0.98] transition-all border border-slate-200/50 dark:border-slate-700/50">Annuler</button>
-                                        <button onclick="handleCompProfileUpdate()" class="flex-1 py-3 bg-gradient-to-r from-primary to-blue-600 text-white font-bold rounded-2xl text-[10px] uppercase tracking-wider active:scale-[0.98] transition-all shadow-md shadow-primary/20">Enregistrer</button>
+                                        <button onclick="handleCompProfileUpdate()" class="flex-1 py-3 bg-primary text-white font-bold rounded-2xl text-[10px] uppercase tracking-wider active:scale-[0.98] transition-all shadow-md shadow-primary/20">Enregistrer</button>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Profile Actions -->
                             <div id="compProfileActions" class="space-y-2.5">
-                                <button onclick="toggleCompProfileEdit()" class="w-full py-3.5 bg-white/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold rounded-2xl text-[11px] uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+                                <button onclick="toggleCompProfileEdit()" class="w-full py-3.5 bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold rounded-2xl text-[11px] uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
                                     <span class="material-symbols-outlined text-[16px]">edit</span>
                                     Éditer le profil
                                 </button>
@@ -1644,13 +1640,13 @@
                         </div>
 
                         <!-- Login/Register Form -->
-                        <div id="compLoginForm" class="relative space-y-5">
+                        <div id="compLoginForm" class="space-y-5">
                             <!-- Auth Header -->
                             <div class="text-center space-y-2">
                                 <div class="size-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center mb-3">
                                     <span class="material-symbols-outlined text-primary text-[28px]">shield_person</span>
                                 </div>
-                                <h3 id="compAuthTitle" class="text-lg font-black tracking-tight">Connexion</h3>
+                                <h3 id="compAuthTitle" class="text-lg font-black tracking-tight text-slate-900 dark:text-white">Connexion</h3>
                                 <p class="text-[11px] text-slate-400 font-medium">Connectez-vous pour rejoindre les compétitions</p>
                             </div>
 
@@ -1658,21 +1654,21 @@
                             <div id="compPseudoGroup" class="hidden">
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">badge</span>
-                                    <input id="compPseudo" type="text" placeholder="Choisir un pseudo" minlength="2" maxlength="20" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 pl-11 pr-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                    <input id="compPseudo" type="text" placeholder="Choisir un pseudo" minlength="2" maxlength="20" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-11 pr-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white">
                                 </div>
                             </div>
 
                             <!-- Email Field -->
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">mail</span>
-                                <input id="compEmail" type="email" placeholder="Adresse email" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 pl-11 pr-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none">
+                                <input id="compEmail" type="email" placeholder="Adresse email" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-11 pr-4 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white">
                             </div>
 
                             <!-- Password Field -->
                             <div class="space-y-2">
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">lock</span>
-                                    <input id="compPass" type="password" placeholder="Mot de passe" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 pl-11 pr-12 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none" oninput="updatePasswordStrength(this.value)">
+                                    <input id="compPass" type="password" placeholder="Mot de passe" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-11 pr-12 py-3.5 text-sm font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-shadow outline-none text-slate-900 dark:text-white" oninput="updatePasswordStrength(this.value)">
                                     <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 size-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
                                         <span id="compPassToggleIcon" class="material-symbols-outlined text-[18px]">visibility_off</span>
                                     </button>
@@ -1690,7 +1686,7 @@
                             </div>
 
                             <!-- Submit Button -->
-                            <button id="compAuthSubmitBtn" onclick="handleCompAuthSubmit()" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 text-white font-black rounded-2xl text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all shadow-lg shadow-primary/25 border border-primary/20 flex items-center justify-center gap-2">
+                            <button id="compAuthSubmitBtn" onclick="handleCompAuthSubmit()" class="w-full py-4 bg-primary text-white font-black rounded-2xl text-xs uppercase tracking-[0.2em] active:scale-[0.98] transition-all shadow-xl shadow-primary/30 flex items-center justify-center gap-2">
                                 <span class="material-symbols-outlined text-[18px]">login</span>
                                 Se Connecter
                             </button>
@@ -1709,8 +1705,8 @@
                             </div>
 
                             <!-- OAuth -->
-                            <button onclick="handleCompOAuth('google')" class="w-full py-3.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold rounded-2xl text-[11px] flex items-center justify-center gap-2.5 border border-slate-200 dark:border-slate-700 active:scale-[0.98] transition-all hover:shadow-md">
-                                <svg class="size-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                            <button onclick="handleCompOAuth('google')" class="w-full py-2.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold rounded-xl text-[10px] flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 active:scale-[0.98] transition-all hover:shadow-sm">
+                                <svg class="size-3.5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                                 Continuer avec Google
                             </button>
                         </div>
@@ -1721,7 +1717,7 @@
                 <div id="tabStats" class="comp-tab hidden space-y-5">
                     <!-- Top Stats Cards -->
                     <section class="grid grid-cols-2 gap-3">
-                        <div class="relative p-5 rounded-3xl overflow-hidden border border-primary/20 text-center">
+                        <div class="relative p-5 rounded-3xl overflow-hidden border border-primary/20 text-center bg-white dark:bg-slate-800/80 shadow-lg">
                             <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-blue-500/5"></div>
                             <div class="relative">
                                 <span class="material-symbols-outlined text-primary/40 text-[20px] mb-1">trending_up</span>
@@ -1729,7 +1725,7 @@
                                 <p class="text-[9px] font-black tracking-[0.15em] uppercase text-primary mt-1">Cote ELO</p>
                             </div>
                         </div>
-                        <div class="relative p-5 rounded-3xl overflow-hidden border border-emerald-500/20 text-center">
+                        <div class="relative p-5 rounded-3xl overflow-hidden border border-emerald-500/20 text-center bg-white dark:bg-slate-800/80 shadow-lg">
                             <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-green-500/5"></div>
                             <div class="relative">
                                 <span class="material-symbols-outlined text-emerald-500/40 text-[20px] mb-1">percent</span>
@@ -1740,9 +1736,8 @@
                     </section>
 
                     <!-- Progress Section -->
-                    <section class="relative p-5 rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-700/40 shadow-sm">
-                        <div class="absolute inset-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/60 dark:to-slate-800/30"></div>
-                        <div class="relative space-y-4">
+                    <section class="relative p-5 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700/50 shadow-lg bg-white dark:bg-slate-800/80">
+                        <div class="space-y-4">
                             <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-[14px]">military_tech</span>Progression
                             </h3>
@@ -1760,8 +1755,8 @@
 
                             <!-- Detailed Stats -->
                             <div class="grid grid-cols-3 gap-2 pt-2">
-                                <div class="py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/30 text-center border border-slate-100/50 dark:border-slate-700/30">
-                                    <p id="compStatGames" class="text-base font-black">0</p>
+                                <div class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/30 text-center border border-slate-200 dark:border-slate-700/30">
+                                    <p id="compStatGames" class="text-base font-black text-slate-900 dark:text-white">0</p>
                                     <p class="text-[7px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Parties</p>
                                 </div>
                                 <div class="py-2.5 rounded-xl bg-emerald-500/5 text-center border border-emerald-500/10">
@@ -1777,9 +1772,8 @@
                     </section>
 
                     <!-- Match History -->
-                    <section class="relative p-5 rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-700/40 shadow-sm">
-                        <div class="absolute inset-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/60 dark:to-slate-800/30"></div>
-                        <div class="relative">
+                    <section class="relative p-5 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700/50 shadow-lg bg-white dark:bg-slate-800/80">
+                        <div>
                             <h3 class="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 mb-4">
                                 <span class="material-symbols-outlined text-[14px]">history</span>Historique Récent
                             </h3>
@@ -10870,19 +10864,30 @@
             if (!email || !pass) return showToast('Veuillez remplir les champs obligatoires.', 'warning');
             if (isRegisterMode && (!pseudo || pseudo.length < 2)) return showToast('Pseudo requis (min 2 car.).', 'warning');
 
+            if (pass.length < 8) return showToast('Mot de passe : 8 caractères minimum.', 'warning');
+
             const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
             const body = { email, password: pass };
             if (isRegisterMode) body.pseudo = pseudo;
 
+            const submitBtn = document.getElementById('compAuthSubmitBtn');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.6'; }
+
             try {
                 const res = await apiComp(endpoint, 'POST', body);
                 compToken = res.token; 
+                compUser = res.user;
                 localStorage.setItem(COMP_TOKEN_KEY, compToken);
-                showToast(isRegisterMode ? 'Compte créé avec succès !' : 'Bon retour parmi nous !', 'success');
+                showToast(isRegisterMode ? 'Compte créé avec succès ! 🎉' : 'Bon retour parmi nous !', 'success');
+                updateHomeProfileButton();
                 refreshCompProfile();
                 switchCompTab('events');
             } catch (err) { 
-                showToast(err.message, 'error'); 
+                console.error('Auth error:', err);
+                const errorMsg = err.message || 'Erreur de connexion au serveur';
+                showToast(errorMsg, 'error'); 
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
             }
         }
 
