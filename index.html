@@ -10909,15 +10909,15 @@
         window.showHomeAuthModal = function() {
             const modal = document.getElementById('homeAuthModal');
             if (!modal) return;
-            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
             
             const connectedDiv = document.getElementById('homeAuthConnected');
             const formDiv = document.getElementById('homeAuthForm');
 
             if (compToken && compUser) {
                 // User is logged in — show profile
-                if (connectedDiv) connectedDiv.classList.remove('hidden');
-                if (formDiv) formDiv.classList.add('hidden');
+                if (connectedDiv) connectedDiv.style.display = 'block';
+                if (formDiv) formDiv.style.display = 'none';
                 
                 const nameEl = document.getElementById('homeAuthName');
                 const emailEl = document.getElementById('homeAuthEmail');
@@ -10940,8 +10940,8 @@
                 if (statGames) statGames.textContent = compUser.gamesPlayed || 0;
             } else if (compToken && !compUser) {
                 // Token exists but no user loaded yet — try to load
-                if (connectedDiv) connectedDiv.classList.add('hidden');
-                if (formDiv) formDiv.classList.remove('hidden');
+                if (connectedDiv) connectedDiv.style.display = 'none';
+                if (formDiv) formDiv.style.display = 'none'; // Keep hidden until loaded
                 apiComp('/api/auth/me').then(res => {
                     compUser = res.user;
                     updateHomeProfileButton();
@@ -10952,14 +10952,14 @@
                 });
             } else {
                 // Not logged in — show form
-                if (connectedDiv) connectedDiv.classList.add('hidden');
-                if (formDiv) formDiv.classList.remove('hidden');
+                if (connectedDiv) connectedDiv.style.display = 'none';
+                if (formDiv) formDiv.style.display = 'block';
             }
         }
 
         window.closeHomeAuthModal = function() {
             const modal = document.getElementById('homeAuthModal');
-            if (modal) modal.classList.add('hidden');
+            if (modal) modal.style.display = 'none';
         }
 
         window.toggleHomeAuthMode = function() {
@@ -10974,13 +10974,13 @@
                 if (title) title.textContent = 'Créer un compte';
                 if (toggleBtn) toggleBtn.textContent = 'Se connecter';
                 if (toggleText) toggleText.textContent = 'Déjà un compte ?';
-                if (pseudoGroup) pseudoGroup.classList.remove('hidden');
+                if (pseudoGroup) pseudoGroup.style.display = 'block';
                 if (submitBtn) submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">person_add</span>Créer mon Compte';
             } else {
                 if (title) title.textContent = 'Connexion';
                 if (toggleBtn) toggleBtn.textContent = "S'inscrire";
                 if (toggleText) toggleText.textContent = 'Pas encore de compte ?';
-                if (pseudoGroup) pseudoGroup.classList.add('hidden');
+                if (pseudoGroup) pseudoGroup.style.display = 'none';
                 if (submitBtn) submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">login</span>Se Connecter';
             }
         }
