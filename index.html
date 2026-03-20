@@ -716,7 +716,16 @@
         <!-- SCREEN 1: MAIN MENU -->
         <div id="screenMainMenu" class="home-screen relative z-10 flex flex-1 flex-col w-full h-full">
             <header class="home-header relative z-20 flex items-center justify-between shrink-0">
-                <div class="home-header-spacer"></div>
+                <div class="home-header-spacer">
+                    <!-- Profile button on the left side -->
+                    <button id="homeProfileBtn" onclick="showHomeAuthModal()"
+                        class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform">
+                        <div id="homeProfileAvatar" class="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                            <span class="material-symbols-outlined text-[16px] text-primary">person</span>
+                        </div>
+                        <span id="homeProfileName" class="text-xs font-bold text-slate-600 dark:text-slate-300 max-w-[80px] truncate">Connexion</span>
+                    </button>
+                </div>
                 <div class="flex gap-3">
                     <button
                         class="home-header-btn flex items-center justify-center bg-white/10 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/30 backdrop-blur-md active:scale-95 transition-transform"
@@ -730,6 +739,100 @@
                     </button>
                 </div>
             </header>
+
+            <!-- Modal Connexion/Inscription depuis l'accueil -->
+            <div id="homeAuthModal" class="fixed inset-0 z-[999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm hidden" onclick="if(event.target===this)closeHomeAuthModal()">
+                <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl p-6 pb-8 shadow-2xl border border-slate-200/20 dark:border-slate-700/30 transform transition-transform" style="animation: slideUp 0.3s ease-out">
+                    <style>@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}</style>
+                    
+                    <!-- Connected state -->
+                    <div id="homeAuthConnected" class="hidden">
+                        <div class="flex items-center gap-4 mb-5">
+                            <div id="homeAuthAvatar" class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-blue-500/10 flex items-center justify-center border border-primary/20 overflow-hidden">
+                                <span class="material-symbols-outlined text-3xl text-primary/40">person</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 id="homeAuthName" class="text-lg font-black text-slate-900 dark:text-white truncate">Pseudo</h3>
+                                <p id="homeAuthEmail" class="text-xs text-slate-500 truncate">email@example.com</p>
+                                <div class="flex gap-2 mt-1">
+                                    <span id="homeAuthRank" class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase tracking-wider">
+                                        <span class="material-symbols-outlined text-[10px] mr-0.5">star</span>Bronze
+                                    </span>
+                                    <span id="homeAuthElo" class="text-[10px] font-bold text-slate-400">ELO: 1200</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mb-5">
+                            <div class="text-center p-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200/30 dark:border-slate-700/30">
+                                <div id="homeAuthStatElo" class="text-lg font-black text-primary">1200</div>
+                                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">ELO</div>
+                            </div>
+                            <div class="text-center p-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200/30 dark:border-slate-700/30">
+                                <div id="homeAuthStatWins" class="text-lg font-black text-emerald-500">0</div>
+                                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Victoires</div>
+                            </div>
+                            <div class="text-center p-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200/30 dark:border-slate-700/30">
+                                <div id="homeAuthStatGames" class="text-lg font-black text-slate-600 dark:text-slate-300">0</div>
+                                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Parties</div>
+                            </div>
+                        </div>
+                        <button onclick="navToScreen('screenCompetition'); closeHomeAuthModal(); switchCompTab('account')"
+                            class="w-full py-3 mb-2 rounded-xl bg-primary text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                            <span class="material-symbols-outlined text-[16px]">trophy</span>Mode Compétition
+                        </button>
+                        <button onclick="handleCompLogout(); closeHomeAuthModal(); updateHomeProfileButton()"
+                            class="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-slate-500 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-slate-200/30 dark:border-slate-700/30 active:scale-95 transition-transform">
+                            <span class="material-symbols-outlined text-[16px]">logout</span>Déconnexion
+                        </button>
+                    </div>
+
+                    <!-- Login/Register state -->
+                    <div id="homeAuthForm" class="">
+                        <div class="text-center mb-5">
+                            <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/30">
+                                <span class="material-symbols-outlined text-3xl text-white">shield_person</span>
+                            </div>
+                            <h3 id="homeAuthTitle" class="text-xl font-black text-slate-900 dark:text-white">Connexion</h3>
+                            <p class="text-xs text-slate-500 mt-1">Connectez-vous pour sauvegarder vos stats</p>
+                        </div>
+
+                        <div id="homeRegPseudoGroup" class="mb-3 hidden">
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">badge</span>
+                                <input id="homeRegPseudo" type="text" placeholder="Choisir un pseudo" 
+                                    class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200/30 dark:border-slate-700/30 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">mail</span>
+                                <input id="homeAuthEmailInput" type="email" placeholder="Adresse email" 
+                                    class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200/30 dark:border-slate-700/30 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">lock</span>
+                                <input id="homeAuthPassInput" type="password" placeholder="Mot de passe" 
+                                    class="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200/30 dark:border-slate-700/30 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                <button type="button" onclick="toggleHomePassVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <span id="homePassToggleIcon" class="material-symbols-outlined text-[18px]">visibility_off</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button id="homeAuthSubmitBtn" onclick="handleHomeAuthSubmit()"
+                            class="w-full py-3.5 mb-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/30 active:scale-95 transition-transform">
+                            <span class="material-symbols-outlined text-[18px]">login</span>Se Connecter
+                        </button>
+
+                        <div class="text-center">
+                            <span id="homeAuthToggleText" class="text-xs text-slate-500">Pas encore de compte ?</span>
+                            <button id="homeAuthToggleBtn" onclick="toggleHomeAuthMode()" class="text-xs font-bold text-primary ml-1">S'inscrire</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <main class="home-main flex-1 overflow-hidden mx-auto">
                 <div class="home-brand flex flex-col items-center">
@@ -10782,9 +10885,174 @@
 
         window.handleCompLogout = function() {
             compToken = ''; localStorage.removeItem(COMP_TOKEN_KEY);
+            compUser = null;
             const ui = document.getElementById('compUserInfo'); if(ui) ui.classList.add('hidden');
             const form = document.getElementById('compLoginForm'); if(form) form.classList.remove('hidden');
             showToast('Déconnecté.', 'info');
+            updateHomeProfileButton();
+        }
+
+        // --- HOME AUTH MODAL ---
+        let homeIsRegisterMode = false;
+
+        function getRankName(elo) {
+            if (elo >= 2000) return { name: 'Diamant', color: 'text-cyan-400', bg: 'bg-cyan-500/10' };
+            if (elo >= 1600) return { name: 'Or', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
+            if (elo >= 1400) return { name: 'Argent', color: 'text-slate-300', bg: 'bg-slate-500/10' };
+            return { name: 'Bronze', color: 'text-amber-500', bg: 'bg-amber-500/10' };
+        }
+
+        window.showHomeAuthModal = function() {
+            const modal = document.getElementById('homeAuthModal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            
+            const connectedDiv = document.getElementById('homeAuthConnected');
+            const formDiv = document.getElementById('homeAuthForm');
+
+            if (compToken && compUser) {
+                // User is logged in — show profile
+                if (connectedDiv) connectedDiv.classList.remove('hidden');
+                if (formDiv) formDiv.classList.add('hidden');
+                
+                const nameEl = document.getElementById('homeAuthName');
+                const emailEl = document.getElementById('homeAuthEmail');
+                const eloEl = document.getElementById('homeAuthElo');
+                const rankEl = document.getElementById('homeAuthRank');
+                const statElo = document.getElementById('homeAuthStatElo');
+                const statWins = document.getElementById('homeAuthStatWins');
+                const statGames = document.getElementById('homeAuthStatGames');
+                
+                if (nameEl) nameEl.textContent = compUser.pseudo || 'Joueur';
+                if (emailEl) emailEl.textContent = compUser.email || '';
+                const rank = getRankName(compUser.elo || 1200);
+                if (eloEl) eloEl.textContent = `ELO: ${compUser.elo || 1200}`;
+                if (rankEl) {
+                    rankEl.className = `inline-flex items-center px-2 py-0.5 rounded-md ${rank.bg} ${rank.color} text-[9px] font-black uppercase tracking-wider`;
+                    rankEl.innerHTML = `<span class="material-symbols-outlined text-[10px] mr-0.5">star</span>${rank.name}`;
+                }
+                if (statElo) statElo.textContent = compUser.elo || 1200;
+                if (statWins) statWins.textContent = compUser.wins || 0;
+                if (statGames) statGames.textContent = compUser.gamesPlayed || 0;
+            } else if (compToken && !compUser) {
+                // Token exists but no user loaded yet — try to load
+                if (connectedDiv) connectedDiv.classList.add('hidden');
+                if (formDiv) formDiv.classList.remove('hidden');
+                apiComp('/api/auth/me').then(res => {
+                    compUser = res.user;
+                    updateHomeProfileButton();
+                    showHomeAuthModal(); // Reopen with user data
+                }).catch(() => {
+                    compToken = ''; localStorage.removeItem(COMP_TOKEN_KEY);
+                    updateHomeProfileButton();
+                });
+            } else {
+                // Not logged in — show form
+                if (connectedDiv) connectedDiv.classList.add('hidden');
+                if (formDiv) formDiv.classList.remove('hidden');
+            }
+        }
+
+        window.closeHomeAuthModal = function() {
+            const modal = document.getElementById('homeAuthModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        window.toggleHomeAuthMode = function() {
+            homeIsRegisterMode = !homeIsRegisterMode;
+            const title = document.getElementById('homeAuthTitle');
+            const toggleBtn = document.getElementById('homeAuthToggleBtn');
+            const toggleText = document.getElementById('homeAuthToggleText');
+            const pseudoGroup = document.getElementById('homeRegPseudoGroup');
+            const submitBtn = document.getElementById('homeAuthSubmitBtn');
+
+            if (homeIsRegisterMode) {
+                if (title) title.textContent = 'Créer un compte';
+                if (toggleBtn) toggleBtn.textContent = 'Se connecter';
+                if (toggleText) toggleText.textContent = 'Déjà un compte ?';
+                if (pseudoGroup) pseudoGroup.classList.remove('hidden');
+                if (submitBtn) submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">person_add</span>Créer mon Compte';
+            } else {
+                if (title) title.textContent = 'Connexion';
+                if (toggleBtn) toggleBtn.textContent = "S'inscrire";
+                if (toggleText) toggleText.textContent = 'Pas encore de compte ?';
+                if (pseudoGroup) pseudoGroup.classList.add('hidden');
+                if (submitBtn) submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">login</span>Se Connecter';
+            }
+        }
+
+        window.handleHomeAuthSubmit = async function() {
+            const email = document.getElementById('homeAuthEmailInput')?.value?.trim();
+            const pass = document.getElementById('homeAuthPassInput')?.value;
+            const pseudo = document.getElementById('homeRegPseudo')?.value?.trim();
+
+            if (!email || !pass) return showToast('Veuillez remplir les champs obligatoires.', 'warning');
+            if (homeIsRegisterMode && (!pseudo || pseudo.length < 2)) return showToast('Pseudo requis (min 2 caractères).', 'warning');
+            if (pass.length < 8) return showToast('Mot de passe : 8 caractères minimum.', 'warning');
+
+            const endpoint = homeIsRegisterMode ? '/api/auth/register' : '/api/auth/login';
+            const body = { email, password: pass };
+            if (homeIsRegisterMode) body.pseudo = pseudo;
+
+            const submitBtn = document.getElementById('homeAuthSubmitBtn');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.6'; }
+
+            try {
+                const res = await apiComp(endpoint, 'POST', body);
+                compToken = res.token;
+                compUser = res.user;
+                localStorage.setItem(COMP_TOKEN_KEY, compToken);
+                showToast(homeIsRegisterMode ? 'Compte créé avec succès ! 🎉' : 'Bon retour parmi nous !', 'success');
+                updateHomeProfileButton();
+                closeHomeAuthModal();
+                // Clear form
+                const emailInput = document.getElementById('homeAuthEmailInput'); if (emailInput) emailInput.value = '';
+                const passInput = document.getElementById('homeAuthPassInput'); if (passInput) passInput.value = '';
+                const pseudoInput = document.getElementById('homeRegPseudo'); if (pseudoInput) pseudoInput.value = '';
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
+            }
+        }
+
+        window.toggleHomePassVisibility = function() {
+            const input = document.getElementById('homeAuthPassInput');
+            const icon = document.getElementById('homePassToggleIcon');
+            if (input && icon) {
+                const isPassword = input.type === 'password';
+                input.type = isPassword ? 'text' : 'password';
+                icon.textContent = isPassword ? 'visibility' : 'visibility_off';
+            }
+        }
+
+        window.updateHomeProfileButton = function() {
+            const nameEl = document.getElementById('homeProfileName');
+            const avatarEl = document.getElementById('homeProfileAvatar');
+            if (compToken && compUser) {
+                if (nameEl) nameEl.textContent = compUser.pseudo || 'Joueur';
+                if (avatarEl) {
+                    avatarEl.innerHTML = `<span class="material-symbols-outlined text-[16px] text-emerald-400">check_circle</span>`;
+                    avatarEl.className = 'w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center overflow-hidden';
+                }
+            } else {
+                if (nameEl) nameEl.textContent = 'Connexion';
+                if (avatarEl) {
+                    avatarEl.innerHTML = `<span class="material-symbols-outlined text-[16px] text-primary">person</span>`;
+                    avatarEl.className = 'w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden';
+                }
+            }
+        }
+
+        // Auto-check session on page load
+        if (compToken) {
+            apiComp('/api/auth/me').then(res => {
+                compUser = res.user;
+                updateHomeProfileButton();
+            }).catch(() => {
+                compToken = ''; localStorage.removeItem(COMP_TOKEN_KEY);
+                updateHomeProfileButton();
+            });
         }
 
         window.toggleCompProfileEdit = function() {
