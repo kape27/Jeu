@@ -159,6 +159,18 @@ function createCompetitionApiPg(options) {
                     ('Légende', '💎', 'Atteignez 2000 ELO', 'elo', 2000)
                 ON CONFLICT (name) DO NOTHING;
 
+                CREATE TABLE IF NOT EXISTS matchmaking_queue (
+                    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                    mode TEXT NOT NULL,
+                    joined_at BIGINT NOT NULL,
+                    elo INTEGER NOT NULL
+                );
+
+                -- Singleton Ranked Event
+                INSERT INTO events (id, code, name, description, mode, status, max_players, created_by, created_at, updated_at)
+                VALUES (1, 'RANKED', 'Matchmaking Classé', 'Système de matchmaking automatique par ELO.', 'classic', 'started', 99999, 1, 0, 0)
+                ON CONFLICT (id) DO NOTHING;
+
                 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
                 CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
                 CREATE INDEX IF NOT EXISTS idx_event_players_event_id ON event_players(event_id);
@@ -166,6 +178,7 @@ function createCompetitionApiPg(options) {
                 CREATE INDEX IF NOT EXISTS idx_users_auth_provider ON users(auth_provider, auth_provider_user_id);
                 CREATE INDEX IF NOT EXISTS idx_messages_event_id ON messages(event_id, created_at);
                 CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
+                CREATE INDEX IF NOT EXISTS idx_matchmaking_queue_mode ON matchmaking_queue(mode, elo);
             `);
             schemaReady = true;
             console.log('[PG] Database schema initialized successfully.');
@@ -388,7 +401,7 @@ function createCompetitionApiPg(options) {
         return {
             'Access-Control-Allow-Origin': rawOrigin,
             'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
             'Access-Control-Max-Age': '86400',
             Vary: 'Origin'
         };
@@ -816,6 +829,107 @@ function createCompetitionApiPg(options) {
         sendJson(res, 200, { ok: true, event: await toEventPayload(updated) }, corsHeaders);
     }
 
+    async function handleEventDelete(req, res, corsHeaders, code) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Authentification requise.');
+        const event = await requireEventByCodeOrThrow(code);
+        if (!(await userIsEventHost(event.id, user.id))) throw createHttpError(403, 'Seul l hote peut supprimer la competition.');
+        if (String(event.status) === 'started') throw createHttpError(409, 'Impossible de supprimer une competition en cours.');
+        await dbRun('DELETE FROM matches WHERE event_id = $1', [event.id]);
+        await dbRun('DELETE FROM event_players WHERE event_id = $1', [event.id]);
+        await dbRun('DELETE FROM events WHERE id = $1', [event.id]);
+        sendJson(res, 200, { ok: true, message: 'Competition supprimee avec succes.' }, corsHeaders);
+    }
+
+    async function handleMatchmakingJoin(req, res, corsHeaders) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Authentification requise.');
+        
+        const body = await readJsonBody(req);
+        const mode = sanitizeEventMode(body.mode);
+        const now = nowMs();
+
+        // 1. Check if already in queue
+        const existing = await dbGet('SELECT * FROM matchmaking_queue WHERE user_id = $1', [user.id]);
+        if (existing) {
+            // Update mode/elo if already there
+            await dbRun('UPDATE matchmaking_queue SET mode = $1, elo = $2, joined_at = $3 WHERE user_id = $4', [mode, user.elo, now, user.id]);
+        } else {
+            await dbRun('INSERT INTO matchmaking_queue (user_id, mode, joined_at, elo) VALUES ($1, $2, $3, $4)', [user.id, mode, now, user.elo]);
+        }
+
+        // 2. Try to find a match
+        // Find players in same mode, not self, within +/- 150 ELO
+        const opponent = await dbGet(`
+            SELECT user_id, elo 
+            FROM matchmaking_queue 
+            WHERE mode = $1 AND user_id != $2 
+            AND elo BETWEEN $3 AND $4
+            ORDER BY joined_at ASC 
+            LIMIT 1
+        `, [mode, user.id, user.elo - 150, user.elo + 150]);
+
+        if (opponent) {
+            // MATCH FOUND!
+            const playerA = user.id;
+            const playerB = opponent.user_id;
+
+            // Remove both from queue
+            await dbRun('DELETE FROM matchmaking_queue WHERE user_id IN ($1, $2)', [playerA, playerB]);
+
+            // Create a ranked match in the Ranked Event (ID=1)
+            const matchResult = await dbRun(`
+                INSERT INTO matches (event_id, round_number, slot_index, player_a_user_id, player_b_user_id, status, created_at, updated_at)
+                VALUES (1, 0, 0, $1, $2, 'pending', $3, $3)
+            `, [playerA, playerB, now]);
+            
+            sendJson(res, 200, { ok: true, matched: true, matchId: 0, opponentPseudo: 'Adversaire' }, corsHeaders);
+            return;
+        }
+
+        sendJson(res, 200, { ok: true, matched: false, message: 'En attente d\'un adversaire...' }, corsHeaders);
+    }
+
+    async function handleMatchmakingCancel(req, res, corsHeaders) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Authentification requise.');
+        await dbRun('DELETE FROM matchmaking_queue WHERE user_id = $1', [user.id]);
+        sendJson(res, 200, { ok: true, message: 'Recherche annulée.' }, corsHeaders);
+    }
+
+    async function handleMatchmakingStatus(req, res, corsHeaders) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Authentification requise.');
+
+        const inQueue = await dbGet('SELECT joined_at FROM matchmaking_queue WHERE user_id = $1', [user.id]);
+        
+        // Check if a match was created recently for this user
+        const match = await dbGet(`
+            SELECT m.id, u1.pseudo as p1, u2.pseudo as p2, m.player_a_user_id, m.player_b_user_id
+            FROM matches m
+            JOIN users u1 ON u1.id = m.player_a_user_id
+            JOIN users u2 ON u2.id = m.player_b_user_id
+            WHERE m.event_id = 1 AND m.status = 'pending'
+            AND (m.player_a_user_id = $1 OR m.player_b_user_id = $1)
+            ORDER BY m.created_at DESC
+            LIMIT 1
+        `, [user.id]);
+
+        if (match) {
+            const oppPseudo = match.player_a_user_id === user.id ? match.p2 : match.p1;
+            sendJson(res, 200, { 
+                ok: true, 
+                matched: true, 
+                matchId: match.id, 
+                opponentPseudo: oppPseudo,
+                isHost: (match.player_a_user_id === user.id)
+            }, corsHeaders);
+            return;
+        }
+
+        sendJson(res, 200, { ok: true, matched: false, inQueue: !!inQueue }, corsHeaders);
+    }
+
     async function handleMatchResult(req, res, corsHeaders, code, matchId) {
         const user = await requireUser(req);
         if (!user) throw createHttpError(401, 'Authentification requise.');
@@ -917,10 +1031,17 @@ function createCompetitionApiPg(options) {
         const matchResultRoute = pathName.match(/^\/api\/events\/([a-z0-9]{4,10})\/matches\/([0-9]+)\/result$/i);
         if (matchResultRoute && method === 'POST') { await handleMatchResult(req, res, corsHeaders, matchResultRoute[1], Number.parseInt(matchResultRoute[2], 10)); return; }
 
-        const actionRoute = pathName.match(/^\/api\/events\/([a-z0-9]{4,10})(?:\/([a-z-]+))?$/i);
+        if (pathName.startsWith('/api/matchmaking/')) {
+            if (pathName === '/api/matchmaking/join' && method === 'POST') { await handleMatchmakingJoin(req, res, corsHeaders); return; }
+            if (pathName === '/api/matchmaking/cancel' && method === 'POST') { await handleMatchmakingCancel(req, res, corsHeaders); return; }
+            if (pathName === '/api/matchmaking/status' && method === 'GET') { await handleMatchmakingStatus(req, res, corsHeaders); return; }
+        }
+
+        const actionRoute = pathName.match(/^\/api\/events\/([A-Z0-9]{6})(?:\/([a-z]+))?$/);
         if (actionRoute) {
             const code = actionRoute[1]; const action = actionRoute[2] || '';
             if (!action && method === 'GET') { await handleEventDetail(res, corsHeaders, code); return; }
+            if (!action && method === 'DELETE') { await handleEventDelete(req, res, corsHeaders, code); return; }
             if (action === 'join' && method === 'POST') { await handleEventJoin(req, res, corsHeaders, code); return; }
             if (action === 'leave' && method === 'POST') { await handleEventLeave(req, res, corsHeaders, code); return; }
             if (action === 'start' && method === 'POST') { await handleEventStart(req, res, corsHeaders, code); return; }

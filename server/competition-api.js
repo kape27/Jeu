@@ -393,7 +393,7 @@ function createCompetitionApi(options) {
         return {
             'Access-Control-Allow-Origin': rawOrigin,
             'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
             'Access-Control-Max-Age': '86400',
             Vary: 'Origin'
         };
@@ -876,14 +876,14 @@ function createCompetitionApi(options) {
         if (!user) {
             throw createHttpError(401, 'Session invalide.');
         }
-        const history = getUserMatchHistory(user.id, parsedUrl.searchParams.get('historyLimit') || '20');
+        const matchHistory = getUserMatchHistory(user.id, parsedUrl.searchParams.get('historyLimit') || '20');
         sendJson(
             res,
             200,
             {
                 ok: true,
                 user,
-                history,
+                matchHistory,
                 stats: {
                     gamesPlayed: user.gamesPlayed,
                     wins: user.wins,
@@ -940,6 +940,33 @@ function createCompetitionApi(options) {
 
         const updated = getUserById(user.id);
         sendJson(res, 200, { ok: true, user: toSafeUser(updated) }, corsHeaders);
+    }
+
+    async function handleLeaderboard(res, corsHeaders, parsedUrl) {
+        const limit = clampNumber(Number.parseInt(parsedUrl.searchParams.get('limit') || '100', 10), 1, 100);
+        const top = dbAll(
+            `
+            SELECT id, pseudo, avatar_url, country_code, level, elo, games_played, wins_total, losses_total
+            FROM users
+            WHERE games_played > 0
+            ORDER BY elo DESC, wins_total DESC
+            LIMIT ?
+            `,
+            [limit]
+        );
+        const leaderboard = top.map((row) => ({
+            id: Number(row.id),
+            pseudo: String(row.pseudo || ''),
+            avatarUrl: String(row.avatar_url || ''),
+            country: String(row.country_code || ''),
+            level: Number(row.level || 1),
+            elo: Number(row.elo || 1200),
+            gamesCount: Number(row.games_played || 0),
+            wins: Number(row.wins_total || 0),
+            losses: Number(row.losses_total || 0),
+            winRate: winRatePercent(Number(row.wins_total || 0), Number(row.games_played || 0))
+        }));
+        sendJson(res, 200, { ok: true, leaderboard }, corsHeaders);
     }
 
     async function handleAdminUpdateRole(req, res, corsHeaders, userId) {
@@ -1122,6 +1149,29 @@ function createCompetitionApi(options) {
         sendJson(res, 200, { ok: true, event: toEventPayload(updated) }, corsHeaders);
     }
 
+    async function handleEventDelete(req, res, corsHeaders, code) {
+        const user = requireUser(req);
+        if (!user) {
+            throw createHttpError(401, 'Authentification requise.');
+        }
+
+        const event = requireEventByCodeOrThrow(code);
+        if (!userIsEventHost(event.id, user.id)) {
+            throw createHttpError(403, 'Seul l hote peut supprimer la competition.');
+        }
+        if (String(event.status) === 'started') {
+            throw createHttpError(409, 'Impossible de supprimer une competition en cours.');
+        }
+
+        dbWithTransaction(() => {
+            dbRun('DELETE FROM matches WHERE event_id = ?', [event.id]);
+            dbRun('DELETE FROM event_players WHERE event_id = ?', [event.id]);
+            dbRun('DELETE FROM events WHERE id = ?', [event.id]);
+        });
+
+        sendJson(res, 200, { ok: true, message: 'Competition supprimee avec succes.' }, corsHeaders);
+    }
+
     async function handleMatchResult(req, res, corsHeaders, code, matchId) {
         const user = requireUser(req);
         if (!user) {
@@ -1241,6 +1291,11 @@ function createCompetitionApi(options) {
             return;
         }
 
+        if (pathName === '/api/leaderboard' && method === 'GET') {
+            await handleLeaderboard(res, corsHeaders, parsedUrl);
+            return;
+        }
+
         const adminRoleRoute = pathName.match(/^\/api\/admin\/users\/([0-9]+)\/role$/i);
         if (adminRoleRoute && method === 'POST') {
             await handleAdminUpdateRole(req, res, corsHeaders, Number.parseInt(adminRoleRoute[1], 10));
@@ -1268,6 +1323,10 @@ function createCompetitionApi(options) {
             const action = actionRoute[2] || '';
             if (!action && method === 'GET') {
                 handleEventDetail(res, corsHeaders, code);
+                return;
+            }
+            if (!action && method === 'DELETE') {
+                await handleEventDelete(req, res, corsHeaders, code);
                 return;
             }
             if (action === 'join' && method === 'POST') {

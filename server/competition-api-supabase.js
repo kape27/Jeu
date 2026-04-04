@@ -218,7 +218,7 @@ function createCompetitionApiSupabase(options) {
         return {
             'Access-Control-Allow-Origin': rawOrigin,
             'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
             'Access-Control-Max-Age': '86400',
             Vary: 'Origin'
         };
@@ -1282,6 +1282,30 @@ function createCompetitionApiSupabase(options) {
         sendJson(res, 200, { ok: true, event: await toEventPayload(updated) }, corsHeaders);
     }
 
+    async function handleEventDelete(req, res, corsHeaders, code) {
+        const user = await requireUser(req);
+        if (!user) throw createHttpError(401, 'Authentification requise.');
+
+        const event = await requireEventByCodeOrThrow(code);
+        if (!(await userIsEventHost(event.id, user.id))) {
+            throw createHttpError(403, 'Seul l hote peut supprimer la competition.');
+        }
+        if (String(event.status) === 'started') {
+            throw createHttpError(409, 'Impossible de supprimer une competition en cours.');
+        }
+
+        const { error: matchesError } = await supabase.from('matches').delete().eq('event_id', event.id);
+        if (matchesError) throw matchesError;
+
+        const { error: playersError } = await supabase.from('event_players').delete().eq('event_id', event.id);
+        if (playersError) throw playersError;
+
+        const { error: eventError } = await supabase.from('events').delete().eq('id', event.id);
+        if (eventError) throw eventError;
+
+        sendJson(res, 200, { ok: true, message: 'Competition supprimee avec succes.' }, corsHeaders);
+    }
+
     async function handleMatchResult(req, res, corsHeaders, code, matchId) {
         const user = await requireUser(req);
         if (!user) throw createHttpError(401, 'Authentification requise.');
@@ -1422,6 +1446,10 @@ function createCompetitionApiSupabase(options) {
             const action = actionRoute[2] || '';
             if (!action && method === 'GET') {
                 await handleEventDetail(res, corsHeaders, code);
+                return;
+            }
+            if (!action && method === 'DELETE') {
+                await handleEventDelete(req, res, corsHeaders, code);
                 return;
             }
             if (action === 'join' && method === 'POST') {

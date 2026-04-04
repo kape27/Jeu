@@ -1531,6 +1531,9 @@
                     <button onclick="switchCompTab('events')" id="btnTabEvents" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase whitespace-nowrap px-2">
                         <span class="material-symbols-outlined text-[16px]">sports_esports</span>SALONS
                     </button>
+                    <button onclick="switchCompTab('ranked')" id="btnTabRanked" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all text-slate-400 uppercase whitespace-nowrap px-2">
+                        <span class="material-symbols-outlined text-[16px]">swords</span>CLASSÉ
+                    </button>
                     <button onclick="switchCompTab('leaderboard')" id="btnTabLeaderboard" class="flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all text-slate-400 uppercase whitespace-nowrap px-2">
                         <span class="material-symbols-outlined text-[16px]">emoji_events</span>TOP
                     </button>
@@ -1639,6 +1642,68 @@
                                         Créer le Tournoi
                                     </span>
                                 </button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tab content: RANKED -->
+                <div id="tabRanked" class="comp-tab hidden space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 px-1 pt-1">
+                    <section class="overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-600 via-primary to-violet-600 text-white shadow-2xl shadow-primary/30 relative">
+                        <!-- Abstract BG Patterns -->
+                        <div class="absolute top-0 right-0 size-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                        <div class="absolute bottom-0 left-0 size-48 bg-violet-400/20 rounded-full blur-2xl -ml-10 -mb-10"></div>
+                        
+                        <div class="relative z-10 p-8 text-center space-y-6">
+                            <div class="size-20 bg-white/10 backdrop-blur-xl rounded-3xl mx-auto flex items-center justify-center border border-white/20 shadow-inner">
+                                <span class="material-symbols-outlined text-4xl">swords</span>
+                            </div>
+                            <div class="space-y-1">
+                                <h2 class="text-3xl font-black tracking-tight">Matchmaking Classé</h2>
+                                <p class="text-white/60 text-[10px] font-black uppercase tracking-widest">Affrontez des joueurs de votre niveau</p>
+                            </div>
+                            
+                            <!-- Search UI Cases -->
+                            <div id="rankedSearching" class="hidden space-y-6 py-4">
+                                <div class="flex items-center justify-center gap-3">
+                                    <span class="size-2.5 bg-white rounded-full animate-bounce [animation-duration:800ms]"></span>
+                                    <span class="size-2.5 bg-white rounded-full animate-bounce [animation-duration:800ms] [animation-delay:200ms]"></span>
+                                    <span class="size-2.5 bg-white rounded-full animate-bounce [animation-duration:800ms] [animation-delay:400ms]"></span>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <p class="text-xs font-black uppercase tracking-widest opacity-80">Recherche en cours...</p>
+                                    <p id="rankedSearchTime" class="text-lg font-black font-mono tracking-tighter">00:00</p>
+                                </div>
+                                <button onclick="cancelRankedSearch()" class="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all active:scale-95">Annuler</button>
+                            </div>
+
+                            <div id="rankedMatched" class="hidden space-y-6 py-4">
+                                <span class="material-symbols-outlined text-5xl text-emerald-300 animate-pulse">check_circle</span>
+                                <div class="space-y-1">
+                                    <p class="text-xs font-black uppercase tracking-widest text-emerald-200">Adversaire trouvé !</p>
+                                    <p id="rankedOpponentPseudo" class="text-2xl font-black">Adversaire...</p>
+                                </div>
+                                <p class="text-[10px] font-black opacity-60">Lancement imminent...</p>
+                            </div>
+
+                            <div id="rankedIdle" class="space-y-8">
+                                <div class="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+                                    <div class="p-4 bg-white/10 rounded-3xl border border-white/10 backdrop-blur-md">
+                                        <p class="text-[9px] font-black opacity-60 uppercase mb-1 tracking-wider">ELO</p>
+                                        <p id="rankedEloLabel" class="text-2xl font-black">---</p>
+                                    </div>
+                                    <div class="p-4 bg-white/10 rounded-3xl border border-white/10 backdrop-blur-md">
+                                        <p class="text-[9px] font-black opacity-60 uppercase mb-1 tracking-wider">Niveau</p>
+                                        <p id="rankedLevelLabel" class="text-2xl font-black">---</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <button onclick="startRankedSearch()" class="w-full max-w-sm py-5 bg-white text-primary font-black rounded-[2rem] shadow-xl shadow-black/20 active:scale-95 transition-all text-sm uppercase tracking-[0.2em] relative group overflow-hidden">
+                                        <span class="relative z-10">Lancer la Recherche</span>
+                                        <div class="absolute inset-0 bg-gradient-to-r from-white via-slate-100 to-white opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    </button>
+                                    <p class="text-[8px] font-black uppercase tracking-widest opacity-40">Match 1v1 • Gain/Perte ELO</p>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -1978,13 +2043,45 @@
                                  <div id="compDetailMatches" class="space-y-2"></div>
                              </div>
 
-                             <div class="pt-6">
-                                 <button id="btnStartComp" onclick="startTargetComp()" class="hidden w-full py-4 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-black rounded-2xl active:scale-95 transition-all text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/25 border border-emerald-400/20">Lancer la compétition</button>
+                             <div class="pt-6 space-y-2">
+                                 <button id="btnStartComp" onclick="startTargetComp()" class="hidden w-full py-4 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-black rounded-2xl active:scale-95 transition-all text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/25 border border-emerald-400/20">
+                                     <span class="flex items-center justify-center gap-2">
+                                         <span class="material-symbols-outlined text-[20px]">play_arrow</span>
+                                         Lancer la compétition
+                                     </span>
+                                 </button>
+                                 <button id="btnDeleteComp" onclick="confirmDeleteComp()" class="hidden w-full py-3 bg-red-500/10 text-red-500 font-bold rounded-2xl active:scale-95 transition-all text-xs uppercase tracking-widest border border-red-500/20 hover:bg-red-500/20">
+                                     <span class="flex items-center justify-center gap-2">
+                                         <span class="material-symbols-outlined text-[18px]">delete</span>
+                                         Supprimer le salon
+                                     </span>
+                                 </button>
                              </div>
                          </div>
                      </div>
                 </div>
             </main>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800">
+                <div class="text-center space-y-4">
+                    <div class="size-16 mx-auto bg-red-500/10 rounded-full flex items-center justify-center">
+                        <span class="material-symbols-outlined text-red-500 text-[32px]">warning</span>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900 dark:text-white">Supprimer le salon ?</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Cette action est irréversible. Tous les joueurs seront déconnectés et les données du salon seront perdues.</p>
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <button onclick="closeDeleteConfirm()" class="py-3 bg-slate-200 dark:bg-slate-800 font-bold rounded-xl active:scale-95 transition-all text-xs uppercase tracking-widest">
+                            Annuler
+                        </button>
+                        <button onclick="deleteTargetComp()" class="py-3 bg-red-500 text-white font-bold rounded-xl active:scale-95 transition-all text-xs uppercase tracking-widest shadow-lg shadow-red-500/25">
+                            Supprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- SCREEN 5: ACTIVE GAME -->
@@ -11007,38 +11104,9 @@
             } catch (err) { console.error('API Error:', err); throw err; }
         }
 
-        window.switchCompTab = function(tabId) {
-            document.querySelectorAll('.comp-tab').forEach(t => t.classList.add('hidden'));
-            const content = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-            if (content) content.classList.remove('hidden');
-            
-            const tabConfig = {
-                events: { icon: 'sports_esports', label: 'SALONS' },
-                leaderboard: { icon: 'emoji_events', label: 'TOP' },
-                stats: { icon: 'bar_chart', label: 'STATS' },
-                account: { icon: 'person', label: 'MOI' }
-            };
-            
-            Object.keys(tabConfig).forEach(t => {
-                const btn = document.getElementById('btnTab' + t.charAt(0).toUpperCase() + t.slice(1));
-                if (btn) {
-                    const cfg = tabConfig[t];
-                    if (t === tabId) {
-                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase whitespace-nowrap px-2";
-                    } else {
-                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all text-slate-400 uppercase whitespace-nowrap px-2";
-                    }
-                    btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">${cfg.icon}</span>${cfg.label}`;
-                }
-            });
-
-            if (tabId === 'account' || tabId === 'stats') refreshCompProfile();
-            if (tabId === 'leaderboard') refreshCompLeaderboard();
-            if (tabId === 'events') refreshCompEvents();
-        }
-
-        window.startCompMatch = function(matchId, mode, p1Name, p2Name, p1Id, p2Id) {
-            activeCompMatch = { id: matchId, eventCode: selectedCompCode, mode: mode, p1Id, p2Id };
+        window.startCompMatch = function(matchId, mode, p1Name, p2Name, p1Id, p2Id, isRanked = false) {
+            const roomCode = isRanked ? `RANKED_${matchId}` : selectedCompCode;
+            activeCompMatch = { id: matchId, eventCode: isRanked ? 'RANKED' : selectedCompCode, mode: mode, p1Id, p2Id, isRanked };
             if (typeof closeCompDetail === 'function') closeCompDetail();
             
             const storm = (mode === 'tempete' || mode === 'tempête');
@@ -11062,7 +11130,138 @@
                 if (sg) sg.classList.add('active');
             }
             
-            showToast('Match de compétition prêt !', 'info');
+            showToast(isRanked ? 'Match Classé prêt !' : 'Match de compétition prêt !', 'info');
+        }
+
+        window.switchCompTab = function(tabId) {
+            document.querySelectorAll('.comp-tab').forEach(t => t.classList.add('hidden'));
+            const content = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (content) content.classList.remove('hidden');
+            
+            const tabConfig = {
+                events: { icon: 'sports_esports', label: 'SALONS' },
+                ranked: { icon: 'swords', label: 'CLASSÉ' },
+                leaderboard: { icon: 'emoji_events', label: 'TOP' },
+                stats: { icon: 'bar_chart', label: 'STATS' },
+                account: { icon: 'person', label: 'MOI' }
+            };
+            
+            Object.keys(tabConfig).forEach(t => {
+                const btn = document.getElementById('btnTab' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (btn) {
+                    const cfg = tabConfig[t];
+                    if (t === tabId) {
+                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm uppercase whitespace-nowrap px-2";
+                    } else {
+                        btn.className = "flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-black tracking-tight rounded-xl transition-all text-slate-400 uppercase whitespace-nowrap px-2";
+                    }
+                    btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">${cfg.icon}</span>${cfg.label}`;
+                }
+            });
+
+            if (tabId === 'account' || tabId === 'stats') refreshCompProfile();
+            if (tabId === 'leaderboard') refreshCompLeaderboard();
+            if (tabId === 'events') refreshCompEvents();
+            if (tabId === 'ranked') {
+                if (compUser) {
+                    const eloLabel = document.getElementById('rankedEloLabel');
+                    const levelLabel = document.getElementById('rankedLevelLabel');
+                    if(eloLabel) eloLabel.textContent = compUser.elo || 1200;
+                    if(levelLabel) levelLabel.textContent = `Lvl ${compUser.level || 1}`;
+                }
+                checkRankedStatus();
+            }
+        }
+
+        let rankedSearchInterval = null;
+        let rankedStartTime = 0;
+
+        window.startRankedSearch = async function() {
+            try {
+                const res = await apiComp('/api/matchmaking/join', 'POST', { mode: 'classic' });
+                if (res.ok) {
+                    document.getElementById('rankedIdle').classList.add('hidden');
+                    document.getElementById('rankedSearching').classList.remove('hidden');
+                    document.getElementById('rankedMatched').classList.add('hidden');
+                    
+                    rankedStartTime = Date.now();
+                    updateRankedTimer();
+                    if (rankedSearchInterval) clearInterval(rankedSearchInterval);
+                    rankedSearchInterval = setInterval(checkRankedStatus, 3000);
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        window.cancelRankedSearch = async function() {
+            try {
+                await apiComp('/api/matchmaking/cancel', 'POST');
+                stopRankedSearch();
+                showToast('Recherche annulée', 'info');
+            } catch (err) { console.error(err); }
+        }
+
+        function stopRankedSearch() {
+            if (rankedSearchInterval) clearInterval(rankedSearchInterval);
+            rankedSearchInterval = null;
+            document.getElementById('rankedIdle').classList.remove('hidden');
+            document.getElementById('rankedSearching').classList.add('hidden');
+            document.getElementById('rankedMatched').classList.add('hidden');
+        }
+
+        function updateRankedTimer() {
+            const timer = document.getElementById('rankedSearchTime');
+            if (!timer || !rankedSearchInterval) return;
+            const elapsed = Math.floor((Date.now() - rankedStartTime) / 1000);
+            const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const s = (elapsed % 60).toString().padStart(2, '0');
+            timer.textContent = `${m}:${s}`;
+            setTimeout(updateRankedTimer, 1000);
+        }
+
+        window.checkRankedStatus = async function() {
+            if (!compUser) return;
+            try {
+                const res = await apiComp('/api/matchmaking/status');
+                if (res.matched) {
+                    if (rankedSearchInterval) clearInterval(rankedSearchInterval);
+                    rankedSearchInterval = null;
+                    
+                    document.getElementById('rankedSearching').classList.add('hidden');
+                    document.getElementById('rankedMatched').classList.remove('hidden');
+                    document.getElementById('rankedOpponentPseudo').textContent = res.opponentPseudo;
+                    
+                    showToast(`Adversaire trouvé : ${res.opponentPseudo}`, 'success');
+                    
+                    const p1 = compUser;
+                    const p2 = { pseudo: res.opponentPseudo };
+
+                    // Launch match after 2 seconds
+                    setTimeout(async () => {
+                        const sessionCode = `RANKED_${res.matchId}`;
+                        window.isHost = res.isHost;
+                        
+                        // Préparer les infos de match pour le report de score final
+                        activeCompMatch = { 
+                            id: res.matchId, 
+                            eventCode: 'RANKED', 
+                            mode: 'classic', 
+                            p1Id: p1.id, 
+                            p2Id: 0, 
+                            isRanked: true 
+                        };
+
+                        if (typeof startOnlineSession === 'function') {
+                            await startOnlineSession(sessionCode);
+                        } else {
+                            startCompMatch(res.matchId, 'classic', p1.pseudo, p2.pseudo, p1.id, 0, true);
+                        }
+                    }, 2000);
+                } else if (!res.inQueue && rankedSearchInterval) {
+                    stopRankedSearch();
+                }
+            } catch (err) { console.error('Matchmaking status error:', err); }
         }
 
         window.refreshCompLeaderboard = async function() {
@@ -11423,6 +11622,219 @@
                         achContainer.innerHTML = achList.map(a => `
                             <div class="group relative size-11 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center cursor-help transition-all hover:scale-110 hover:border-primary/40" title="${a.description}">
                                 <span class="text-xl scale-90 group-hover:scale-110 transition-transform">${a.icon}</span>
+                            </div>
+                        `).join('');
+                    }
+                }
+
+                // Match History
+                const history = res.matchHistory || [];
+                const historyList = document.getElementById('compHistoryList');
+                if(historyList) {
+                    if(history.length === 0) {
+                        historyList.innerHTML = `
+                            <div class="flex flex-col items-center justify-center py-8 opacity-50">
+                                <span class="material-symbols-outlined text-3xl mb-2 text-slate-300 dark:text-slate-600">sports_score</span>
+                                <p class="text-[11px] text-slate-400 font-medium">Aucune partie terminée</p>
+                            </div>
+                        `;
+                    } else {
+                        historyList.innerHTML = history.map(m => {
+                            const isWin = m.result === 'win';
+                            const resultColor = isWin ? 'text-emerald-500 bg-emerald-500/10' : 'text-red-400 bg-red-500/10';
+                            const resultIcon = isWin ? 'check_circle' : 'cancel';
+                            const date = new Date(m.playedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+                            return `
+                                <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                                    <div class="size-9 rounded-full ${resultColor} flex items-center justify-center flex-shrink-0">
+                                        <span class="material-symbols-outlined text-[18px]">${resultIcon}</span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-black truncate text-slate-900 dark:text-white">vs ${m.opponentPseudo}</p>
+                                        <p class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">${m.eventName} • ${date}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-black ${isWin ? 'text-emerald-500' : 'text-red-400'}">${m.scoreA}-${m.scoreB}</p>
+                                        <p class="text-[8px] text-slate-400 uppercase font-bold">Round ${m.round}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+
+                // ELO Chart
+                updateEloChart(history);
+            } catch (err) { console.error('Profile refresh error:', err); }
+        }
+
+        function updateRankDisplay(elo) {
+            const rank = getRankInfo(elo);
+            const rankBadge = document.getElementById('compUserRankBadge');
+            if(rankBadge) {
+                rankBadge.className = `inline-flex items-center px-2 py-0.5 rounded-md ${rank.bg} ${rank.color} text-[9px] font-black uppercase tracking-wider`;
+                rankBadge.innerHTML = `<span class="material-symbols-outlined text-[10px] mr-0.5">star</span>${rank.name}`;
+            }
+
+            // Progress bar
+            const progress = document.getElementById('compRankProgress');
+            const progressText = document.getElementById('compRankProgressText');
+            if(progress && progressText) {
+                const currentRankMin = rank.min;
+                const nextRankMin = rank.next;
+                const progressPercent = nextRankMin ? Math.min(100, ((elo - currentRankMin) / (nextRankMin - currentRankMin)) * 100) : 100;
+                progress.style.width = progressPercent + '%';
+                progressText.textContent = nextRankMin ? `${elo} / ${nextRankMin} ELO` : `${elo} ELO (Max)`;
+            }
+        }
+
+        function getRankInfo(elo) {
+            if (elo >= 2400) return { name: 'Grand Maître', color: 'text-purple-400', bg: 'bg-purple-500/10', min: 2400, next: null };
+            if (elo >= 2200) return { name: 'Maître', color: 'text-violet-400', bg: 'bg-violet-500/10', min: 2200, next: 2400 };
+            if (elo >= 2000) return { name: 'Diamant', color: 'text-cyan-400', bg: 'bg-cyan-500/10', min: 2000, next: 2200 };
+            if (elo >= 1800) return { name: 'Platine', color: 'text-slate-300', bg: 'bg-slate-500/10', min: 1800, next: 2000 };
+            if (elo >= 1600) return { name: 'Or', color: 'text-yellow-400', bg: 'bg-yellow-500/10', min: 1600, next: 1800 };
+            if (elo >= 1400) return { name: 'Argent', color: 'text-slate-400', bg: 'bg-slate-500/10', min: 1400, next: 1600 };
+            return { name: 'Bronze', color: 'text-amber-500', bg: 'bg-amber-500/10', min: 0, next: 1400 };
+        }
+
+        let eloChart = null;
+
+        function updateEloChart(history) {
+            const canvas = document.getElementById('compEloChart');
+            if (!canvas || !window.Chart) return;
+
+            // Destroy previous chart
+            if (eloChart) {
+                eloChart.destroy();
+                eloChart = null;
+            }
+
+            if (!history || history.length === 0) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Aucune donnée', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            // Calculate ELO progression (reverse history to get chronological order)
+            const sortedHistory = [...history].reverse();
+            const eloData = [];
+            let currentElo = compUser?.elo || 1200;
+            
+            // Work backwards from current ELO
+            for (let i = sortedHistory.length - 1; i >= 0; i--) {
+                eloData.unshift(currentElo);
+                // Estimate ELO change (simplified)
+                const match = sortedHistory[i];
+                const eloChange = match.result === 'win' ? -20 : 20; // Reverse because we're going backwards
+                currentElo += eloChange;
+            }
+            eloData.push(compUser?.elo || 1200); // Add current ELO at the end
+
+            const labels = sortedHistory.map((m, i) => `Match ${i + 1}`);
+            labels.push('Actuel');
+
+            const ctx = canvas.getContext('2d');
+            eloChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'ELO',
+                        data: eloData,
+                        borderColor: '#137fec',
+                        backgroundColor: 'rgba(19, 127, 236, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 9 }, maxRotation: 0 }
+                        }
+                    }
+                }
+            });
+        }
+
+        window.updatePasswordStrength = function(password) {
+            if (!isRegisterMode) return;
+            
+            const bars = [
+                document.getElementById('passStr1'),
+                document.getElementById('passStr2'),
+                document.getElementById('passStr3'),
+                document.getElementById('passStr4')
+            ];
+            const label = document.getElementById('passStrLabel');
+            
+            let strength = 0;
+            if (password.length >= 8) strength++;
+            if (password.length >= 12) strength++;
+            if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
+            if (/[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) strength++;
+            
+            const colors = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-emerald-400'];
+            const labels = ['Faible', 'Moyen', 'Bon', 'Excellent'];
+            
+            bars.forEach((bar, i) => {
+                if (bar) {
+                    bar.className = 'h-1 flex-1 rounded-full transition-colors ' + 
+                        (i < strength ? colors[strength - 1] : 'bg-slate-200 dark:bg-slate-700');
+                }
+            });
+            
+            if (label) {
+                label.textContent = strength > 0 ? labels[strength - 1] : 'Force du mot de passe';
+                label.className = 'text-[9px] font-bold uppercase tracking-wider ' + 
+                    (strength > 0 ? colors[strength - 1].replace('bg-', 'text-') : 'text-slate-400');
+            }
+        }
+
+        window.togglePasswordVisibility = function() {
+            const input = document.getElementById('compPass');
+            const icon = document.getElementById('compPassToggleIcon');
+            if (input && icon) {
+                const isPassword = input.type === 'password';
+                input.type = isPassword ? 'text' : 'password';
+                icon.textContent = isPassword ? 'visibility' : 'visibility_off';
+            }
+        }
+
+        window.handleCompOAuth = async function(provider) {
+            showToast('OAuth non implémenté pour le moment', 'info');
+        }
+
+        // Initialize on load
+        updateHomeProfileButton();
                                 <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[8px] font-bold rounded-md opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity shadow-lg">
                                     ${a.name}
                                 </div>
@@ -11703,8 +12115,12 @@
                 
                 document.getElementById('btnJoinComp').classList.toggle('hidden', isJoined);
                 document.getElementById('btnLeaveComp').classList.toggle('hidden', !isJoined);
+                
                 const btnStart = document.getElementById('btnStartComp');
                 if(btnStart) btnStart.classList.toggle('hidden', !isOwner || e.status !== 'open');
+                
+                const btnDelete = document.getElementById('btnDeleteComp');
+                if(btnDelete) btnDelete.classList.toggle('hidden', !isOwner || e.status === 'started');
 
                 // Intégration du Chat
                 if (chatSection) {
@@ -12037,6 +12453,28 @@
                 closeCompDetail(); // Fermer le détail pour montrer que ça a commencé
                 refreshCompEvents(); // Rafraichir la liste
             } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        window.confirmDeleteComp = function() {
+            const modal = document.getElementById('deleteConfirmModal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        window.closeDeleteConfirm = function() {
+            const modal = document.getElementById('deleteConfirmModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        window.deleteTargetComp = async function() {
+            try {
+                await apiComp(`/api/events/${selectedCompCode}`, 'DELETE');
+                showToast('Salon supprimé avec succès.', 'success');
+                closeDeleteConfirm();
+                closeCompDetail();
+                refreshCompEvents();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
         }
 
         window.handleCompOAuth = async function(provider) {
