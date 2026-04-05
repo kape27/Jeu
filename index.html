@@ -11835,54 +11835,43 @@
 
         // Initialize on load
         updateHomeProfileButton();
-                                <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-900 text-white text-[8px] font-bold rounded-md opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity shadow-lg">
-                                    ${a.name}
+
+        // Match History & ELO Chart functions
+        function displayMatchHistory(history) {
+            const historyList = document.getElementById('compHistoryList');
+            if(!historyList) return;
+            
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="flex flex-col items-center justify-center py-8 opacity-50"><span class="material-symbols-outlined text-3xl mb-2 text-slate-300 dark:text-slate-600">sports_score</span><p class="text-[11px] text-slate-400 font-medium">Aucune partie terminée</p></div>';
+            } else {
+                historyList.innerHTML = history.map(h => {
+                    const isWin = h.winnerUserId === compUser.id;
+                    const resColor = isWin ? 'text-emerald-500' : 'text-red-400';
+                    const resLabel = isWin ? 'VICTOIRE' : 'DÉFAITE';
+                    const playedAt = h.ts || h.created_at || Date.now();
+                    return `
+                        <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/40">
+                            <div class="flex items-center gap-3">
+                                <div class="size-8 rounded-full ${isWin ? 'bg-emerald-500/10' : 'bg-red-500/10'} flex items-center justify-center ${resColor}">
+                                    <span class="material-symbols-outlined text-[16px]">${isWin ? 'emoji_events' : 'close'}</span>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-black uppercase tracking-widest ${resColor}">${resLabel}</p>
+                                    <p class="text-[9px] text-slate-400">Score: ${h.score_a || h.scoreA || 0} - ${h.score_b || h.scoreB || 0}</p>
                                 </div>
                             </div>
-                        `).join('');
-                    }
-                }
-
-                // Match history in Stats tab
-                const history = (res.history || []);
-                const historyList = document.getElementById('compHistoryList');
-                if(historyList) {
-                    if (history.length === 0) {
-                        historyList.innerHTML = '<div class="flex flex-col items-center justify-center py-8 opacity-50"><span class="material-symbols-outlined text-3xl mb-2 text-slate-300 dark:text-slate-600">sports_score</span><p class="text-[11px] text-slate-400 font-medium">Aucune partie terminée</p></div>';
-                    } else {
-                        historyList.innerHTML = history.map(h => {
-                            const isWin = h.winnerUserId === compUser.id;
-                            const resColor = isWin ? 'text-emerald-500' : 'text-red-400';
-                            const resLabel = isWin ? 'VICTOIRE' : 'DÉFAITE';
-                            const playedAt = h.ts || h.created_at || Date.now();
-                            return `
-                                <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/40">
-                                    <div class="flex items-center gap-3">
-                                        <div class="size-8 rounded-full ${isWin ? 'bg-emerald-500/10' : 'bg-red-500/10'} flex items-center justify-center ${resColor}">
-                                            <span class="material-symbols-outlined text-[16px]">${isWin ? 'emoji_events' : 'close'}</span>
-                                        </div>
-                                        <div>
-                                            <p class="text-[10px] font-black uppercase tracking-widest ${resColor}">${resLabel}</p>
-                                            <p class="text-[9px] text-slate-400">Score: ${h.score_a || h.scoreA || 0} - ${h.score_b || h.scoreB || 0}</p>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-xs font-black text-slate-900 dark:text-white">${h.elo_delta > 0 ? '+' : ''}${h.elo_delta || 0} ELO</p>
-                                        <p class="text-[8px] text-slate-400 uppercase tracking-widest">${new Date(playedAt).toLocaleDateString('fr-FR')}</p>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                    }
-                }
-
-                // ELO Chart
-                renderEloChart(elo, res.history || []);
-            } catch (err) { console.error('Refresh profile error:', err); }
+                            <div class="text-right">
+                                <p class="text-xs font-black text-slate-900 dark:text-white">${h.elo_delta > 0 ? '+' : ''}${h.elo_delta || 0} ELO</p>
+                                <p class="text-[8px] text-slate-400 uppercase tracking-widest">${new Date(playedAt).toLocaleDateString('fr-FR')}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
 
         let eloChartInstance = null;
-         function renderEloChart(currentElo, history) {
+        function renderEloChart(currentElo, history) {
              const ctx = document.getElementById('compEloChart');
              if (!ctx) return;
 
@@ -11941,32 +11930,6 @@
                  }
              });
          }
-
-        function updateRankDisplay(elo) {
-            const ranks = [
-                { name: 'Bronze', min: 0, max: 1400, color: 'amber-500', icon: 'star' },
-                { name: 'Argent', min: 1400, max: 1600, color: 'slate-400', icon: 'star' },
-                { name: 'Or', min: 1600, max: 1800, color: 'yellow-500', icon: 'military_tech' },
-                { name: 'Platine', min: 1800, max: 2000, color: 'cyan-400', icon: 'military_tech' },
-                { name: 'Diamant', min: 2000, max: 2500, color: 'blue-400', icon: 'diamond' },
-                { name: 'Maître', min: 2500, max: 9999, color: 'purple-500', icon: 'workspace_premium' }
-            ];
-            const rank = ranks.find(r => elo >= r.min && elo < r.max) || ranks[0];
-            const nextRank = ranks[ranks.indexOf(rank) + 1] || rank;
-            const progress = rank === nextRank ? 100 : Math.min(100, Math.round((elo - rank.min) / (rank.max - rank.min) * 100));
-
-            const badge = document.getElementById('compUserRankBadge');
-            if(badge) {
-                badge.className = `inline-flex items-center px-2 py-0.5 rounded-md bg-${rank.color}/10 text-${rank.color} text-[9px] font-black uppercase tracking-wider`;
-                badge.innerHTML = `<span class="material-symbols-outlined text-[10px] mr-0.5">${rank.icon}</span>${rank.name}`;
-            }
-
-            const bar = document.getElementById('compRankProgress');
-            if(bar) bar.style.width = progress + '%';
-
-            const text = document.getElementById('compRankProgressText');
-            if(text) text.textContent = `${elo} / ${rank.max} ELO`;
-        }
 
         window.updatePasswordStrength = function(password) {
             let score = 0;
@@ -12075,39 +12038,39 @@
                 document.getElementById('compDetailCode').textContent = 'CODE: ' + e.code;
                 document.getElementById('compDetailStatus').textContent = e.status;
                 document.getElementById('compDetailPlayers').innerHTML = (e.players || []).map(p => `
-                    <div class=\"flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50\">
-                        <div class=\"flex items-center gap-2\"><span class=\"size-2 rounded-full bg-primary\"></span><span class=\"text-xs font-bold\">${p.displayName || p.pseudo}</span></div>
-                        <span class=\"text-[10px] font-black opacity-40\">${p.points} PTS</span>
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50">
+                        <div class="flex items-center gap-2"><span class="size-2 rounded-full bg-primary"></span><span class="text-xs font-bold">${p.displayName || p.pseudo}</span></div>
+                        <span class="text-[10px] font-black opacity-40">${p.points} PTS</span>
                     </div>`).join('');
                 
                 document.getElementById('compDetailMatches').innerHTML = (e.matches || []).map(m => {
                     const isMyMatch = (compUser && (compUser.id === m.playerAUserId || compUser.id === m.playerBUserId));
                     const canPlay = isMyMatch && m.status === 'ready' && e.status === 'started';
                     return `
-                        <div class=\"p-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-900/20 mb-2\">
-                            <div class=\"flex items-center justify-between mb-2\">
-                                <span class=\"text-[9px] font-black uppercase tracking-widest text-slate-400\">Round ${m.round}</span>
-                                <span class=\"text-[9px] px-2 py-0.5 rounded-full ${m.status==='completed'?'bg-emerald-500/10 text-emerald-500':'bg-primary/10 text-primary'} font-black uppercase\">${m.status}</span>
+                        <div class="p-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-900/20 mb-2">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Round ${m.round}</span>
+                                <span class="text-[9px] px-2 py-0.5 rounded-full ${m.status==='completed'?'bg-emerald-500/10 text-emerald-500':'bg-primary/10 text-primary'} font-black uppercase">${m.status}</span>
                             </div>
-                            <div class=\"flex items-center justify-between gap-2\">
-                                <div class=\"flex-1 text-center\">
-                                    <p class=\"text-xs font-bold truncate\">${m.playerAPseudo || 'Bye'}</p>
-                                    <p class=\"text-[10px] font-black text-primary\">${m.scoreA}</p>
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex-1 text-center">
+                                    <p class="text-xs font-bold truncate">${m.playerAPseudo || 'Bye'}</p>
+                                    <p class="text-[10px] font-black text-primary">${m.scoreA}</p>
                                 </div>
-                                <div class=\"text-[10px] font-black text-slate-300\">VS</div>
-                                <div class=\"flex-1 text-center\">
-                                    <p class=\"text-xs font-bold truncate\">${m.playerBPseudo || 'Bye'}</p>
-                                    <p class=\"text-[10px] font-black text-primary\">${m.scoreB}</p>
+                                <div class="text-[10px] font-black text-slate-300">VS</div>
+                                <div class="flex-1 text-center">
+                                    <p class="text-xs font-bold truncate">${m.playerBPseudo || 'Bye'}</p>
+                                    <p class="text-[10px] font-black text-primary">${m.scoreB}</p>
                                 </div>
                             </div>
                             ${canPlay ? `
-                                <button onclick=\"startCompMatch(${m.id}, '${e.mode}', '${m.playerAPseudo}', '${m.playerBPseudo}', ${m.playerAUserId}, ${m.playerBUserId})\" class=\"w-full mt-3 py-2.5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all focus:outline-none\">
+                                <button onclick="startCompMatch(${m.id}, '${e.mode}', '${(m.playerAPseudo || '').replace(/'/g, "\\'")}', '${(m.playerBPseudo || '').replace(/'/g, "\\'")}', ${m.playerAUserId}, ${m.playerBUserId})" class="w-full mt-3 py-2.5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all focus:outline-none">
                                     🔥 Jouer le Match
                                 </button>
                             ` : ''}
                         </div>
                     `;
-                }).join('') || '<p class=\"text-center text-[11px] opacity-40 py-8\">En attente de génération...</p>';
+                }).join('') || '<p class="text-center text-[11px] opacity-40 py-8">En attente de génération...</p>';
                 
                 const me = compUser ? compUser.id : null;
                 const isJoined = e.players.some(p => p.userId === me);
