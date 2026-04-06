@@ -1293,7 +1293,7 @@ function createCompetitionApi(options) {
         dbRun(
             `INSERT INTO events (code, name, description, mode, status, max_players, created_by, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [code, eventName, 'Match classé automatique', mode, 'open', 2, user1.id, now, now]
+            [code, eventName, 'Match classé automatique', mode, 'started', 2, user1.id, now, now]
         );
         
         const event = dbGet('SELECT id FROM events WHERE code = ? LIMIT 1', [code]);
@@ -1310,6 +1310,13 @@ function createCompetitionApi(options) {
             `INSERT INTO event_players (event_id, user_id, display_name, is_host, joined_at)
              VALUES (?, ?, ?, ?, ?)`,
             [eventId, user2.userId, user2.pseudo, 0, now]
+        );
+        
+        // Créer le match directement (round 1, slot 0, status ready)
+        dbRun(
+            `INSERT INTO matches (event_id, round_number, slot_index, player_a_user_id, player_b_user_id, status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [eventId, 1, 0, user1.id, user2.userId, 'ready', now, now]
         );
         
         return eventId;
