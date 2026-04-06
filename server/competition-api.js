@@ -61,6 +61,10 @@ function createCompetitionApi(options) {
     const authRateByIp = new Map();
     const db = initDatabase(dbPath);
 
+    // File d'attente de matchmaking
+    const matchmakingQueue = new Map(); // userId -> { userId, pseudo, elo, mode, joinedAt }
+    const matchmakingMatches = new Map(); // userId -> { eventCode, opponentId }
+
     function dbGet(sql, params = []) {
         return db.prepare(sql).get(...params);
     }
@@ -1229,7 +1233,7 @@ function createCompetitionApi(options) {
 
             addPlayerStats(event.id, winnerUserId, { wins: 1, points: 3 });
             if (loserUserId != null) {
-                addPlayerStats(event.id, loserUserId, { losses: 1, points: 0 });
+                addPlayerStats(event.id, loserUserId, { losses: 0 });
                 applyGlobalMatchResult(winnerUserId, loserUserId);
             }
 
@@ -1238,6 +1242,268 @@ function createCompetitionApi(options) {
 
         const updated = requireEventByCodeOrThrow(code);
         sendJson(res, 200, { ok: true, event: toEventPayload(updated) }, corsHeaders);
+    }
+
+    // ========== MATCHMAKING ==========
+
+    function findMatchmakingOpponent(userId, userElo, mode) {
+        const ELO_RANGE = 100; // ±100 points
+        const MAX_WAIT_TIME = 60000; // 60 secondes
+        const now = nowMs();
+        
+        let bestMatch = null;
+        let bestEloDiff = Infinity;
+        
+        for (const [opponentId, data] of matchmakingQueue.entries()) {
+            if (opponentId === userId) continue;
+            if (data.mode !== mode) continue;
+            
+            const eloDiff = Math.abs(data.elo - userElo);
+            const waitTime = now - data.joinedAt;
+            
+            // Élargir la plage ELO après 30 secondes
+            const adjustedRange = waitTime > 30000 ? ELO_RANGE * 2 : ELO_RANGE;
+            
+            if (eloDiff <= adjustedRange && eloDiff < bestEloDiff) {
+                bestMatch = data;
+                bestEloDiff = eloDiff;
+            }
+        }
+        
+        return bestMatch;
+    }
+
+    function getQueuePosition(userId) {
+        const entries = Array.from(matchmakingQueue.entries());
+        entries.sort((a, b) => a[1].joinedAt - b[1].joinedAt);
+        const index = entries.findIndex(([id]) => id === userId);
+        return index >= 0 ? index + 1 : 0;
+    }
+
+    function estimateWaitTime(elo, mode) {
+        // Estimation basique : 30 secondes par défaut
+        const queueSize = Array.from(matchmakingQueue.values()).filter(d => d.mode === mode).length;
+        return Math.max(10000, 30000 - (queueSize * 5000));
+    }
+
+    function createMatchmakingEvent(code, user1, user2, mode) {
+        const now = nowMs();
+        const eventName = `Match Classé: ${user1.pseudo} vs ${user2.pseudo}`;
+        
+        dbRun(
+            `INSERT INTO events (code, name, description, mode, status, max_players, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [code, eventName, 'Match classé automatique', mode, 'open', 2, user1.id, now, now]
+        );
+        
+        const event = dbGet('SELECT id FROM events WHERE code = ? LIMIT 1', [code]);
+        const eventId = Number(event.id);
+        
+        // Ajouter les deux joueurs
+        dbRun(
+            `INSERT INTO event_players (event_id, user_id, display_name, is_host, joined_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [eventId, user1.id, user1.pseudo, 1, now]
+        );
+        
+        dbRun(
+            `INSERT INTO event_players (event_id, user_id, display_name, is_host, joined_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [eventId, user2.userId, user2.pseudo, 0, now]
+        );
+        
+        return eventId;
+    }
+
+    async function handleMatchmakingJoin(req, res, corsHeaders) {
+        const user = requireUser(req);
+        if (!user) {
+            throw createHttpError(401, 'Authentification requise.');
+        }
+
+        const body = await readJsonBody(req);
+        const mode = sanitizeEventMode(body.mode);
+        
+        // Vérifier si déjà en file
+        if (matchmakingQueue.has(user.id)) {
+            throw createHttpError(409, 'Vous etes deja en recherche de match.');
+        }
+        
+        // Ajouter à la file
+        matchmakingQueue.set(user.id, {
+            userId: user.id,
+            pseudo: user.pseudo,
+            elo: user.elo,
+            mode,
+            joinedAt: nowMs()
+        });
+
+        // Chercher un adversaire
+        const opponent = findMatchmakingOpponent(user.id, user.elo, mode);
+        
+        if (opponent) {
+            // Match trouvé!
+            const eventCode = generateEventCode();
+            const eventId = createMatchmakingEvent(eventCode, user, opponent, mode);
+            
+            // Stocker le match pour les deux joueurs
+            matchmakingMatches.set(user.id, { eventCode, opponentId: opponent.userId });
+            matchmakingMatches.set(opponent.userId, { eventCode, opponentId: user.id });
+            
+            // Retirer de la file
+            matchmakingQueue.delete(user.id);
+            matchmakingQueue.delete(opponent.userId);
+            
+            sendJson(res, 200, {
+                ok: true,
+                matched: true,
+                eventCode,
+                eventId,
+                opponent: {
+                    pseudo: opponent.pseudo,
+                    elo: opponent.elo
+                }
+            }, corsHeaders);
+        } else {
+            sendJson(res, 200, {
+                ok: true,
+                matched: false,
+                queuePosition: getQueuePosition(user.id),
+                estimatedWaitTime: estimateWaitTime(user.elo, mode)
+            }, corsHeaders);
+        }
+    }
+
+    async function handleMatchmakingCancel(req, res, corsHeaders) {
+        const user = requireUser(req);
+        if (!user) {
+            throw createHttpError(401, 'Authentification requise.');
+        }
+        
+        matchmakingQueue.delete(user.id);
+        
+        sendJson(res, 200, { ok: true }, corsHeaders);
+    }
+
+    async function handleMatchmakingStatus(req, res, corsHeaders) {
+        const user = requireUser(req);
+        if (!user) {
+            throw createHttpError(401, 'Authentification requise.');
+        }
+        
+        // Vérifier si un match a été trouvé
+        const match = matchmakingMatches.get(user.id);
+        if (match) {
+            matchmakingMatches.delete(user.id);
+            const opponent = dbGet('SELECT pseudo, elo FROM users WHERE id = ? LIMIT 1', [match.opponentId]);
+            sendJson(res, 200, {
+                ok: true,
+                inQueue: false,
+                matched: true,
+                eventCode: match.eventCode,
+                opponent: {
+                    pseudo: opponent?.pseudo || 'Adversaire',
+                    elo: opponent?.elo || 1200
+                }
+            }, corsHeaders);
+            return;
+        }
+        
+        const data = matchmakingQueue.get(user.id);
+        
+        if (!data) {
+            sendJson(res, 200, {
+                ok: true,
+                inQueue: false,
+                matched: false
+            }, corsHeaders);
+            return;
+        }
+        
+        sendJson(res, 200, {
+            ok: true,
+            inQueue: true,
+            matched: false,
+            queuePosition: getQueuePosition(user.id),
+            waitTime: nowMs() - data.joinedAt,
+            estimatedWaitTime: estimateWaitTime(user.elo, data.mode)
+        }, corsHeaders);
+    }
+
+    // ========== CHAT ==========
+
+    async function handleChatMessages(req, res, corsHeaders, code) {
+
+        const user = requireUser(req);
+        if (!user) {
+            throw createHttpError(401, 'Authentification requise.');
+        }
+
+        const event = requireEventByCodeOrThrow(code);
+        const isParticipant = dbGet(
+            'SELECT 1 FROM event_players WHERE event_id = ? AND user_id = ? LIMIT 1',
+            [event.id, user.id]
+        );
+        if (!isParticipant) {
+            throw createHttpError(403, 'Vous devez rejoindre le salon pour voir les messages.');
+        }
+
+        const messages = dbAll(
+            `
+            SELECT id, user_id, pseudo, message, created_at
+            FROM salon_messages
+            WHERE event_code = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+            `,
+            [code]
+        );
+
+        sendJson(res, 200, { ok: true, messages: messages.reverse() }, corsHeaders);
+    }
+
+    async function handleChatSend(req, res, corsHeaders, code) {
+        const user = requireUser(req);
+        if (!user) {
+            throw createHttpError(401, 'Authentification requise.');
+        }
+
+        const event = requireEventByCodeOrThrow(code);
+        const isParticipant = dbGet(
+            'SELECT 1 FROM event_players WHERE event_id = ? AND user_id = ? LIMIT 1',
+            [event.id, user.id]
+        );
+        if (!isParticipant) {
+            throw createHttpError(403, 'Vous devez rejoindre le salon pour envoyer des messages.');
+        }
+
+        const body = await readJsonBody(req);
+        const message = String(body.message || '').trim();
+        if (!message || message.length === 0) {
+            throw createHttpError(400, 'Message vide.');
+        }
+        if (message.length > 200) {
+            throw createHttpError(400, 'Message trop long (max 200 caracteres).');
+        }
+
+        // Filtre basique de mots interdits
+        const bannedWords = ['connard', 'salaud', 'merde', 'putain', 'con'];
+        const lowerMessage = message.toLowerCase();
+        for (const word of bannedWords) {
+            if (lowerMessage.includes(word)) {
+                throw createHttpError(400, 'Message contient des mots interdits.');
+            }
+        }
+
+        dbRun(
+            `
+            INSERT INTO salon_messages (event_code, user_id, pseudo, message, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            `,
+            [code, user.id, user.pseudo, message, nowMs()]
+        );
+
+        sendJson(res, 200, { ok: true }, corsHeaders);
     }
 
     async function routeApi(req, res, corsHeaders, parsedUrl) {
@@ -1314,6 +1580,32 @@ function createCompetitionApi(options) {
         const matchResultRoute = pathName.match(/^\/api\/events\/([a-z0-9]{4,10})\/matches\/([0-9]+)\/result$/i);
         if (matchResultRoute && method === 'POST') {
             await handleMatchResult(req, res, corsHeaders, matchResultRoute[1], Number.parseInt(matchResultRoute[2], 10));
+            return;
+        }
+
+        const messagesRoute = pathName.match(/^\/api\/events\/([a-z0-9]{4,10})\/messages$/i);
+        if (messagesRoute) {
+            const code = messagesRoute[1];
+            if (method === 'GET') {
+                await handleChatMessages(req, res, corsHeaders, code);
+                return;
+            }
+            if (method === 'POST') {
+                await handleChatSend(req, res, corsHeaders, code);
+                return;
+            }
+        }
+
+        if (pathName === '/api/matchmaking/join' && method === 'POST') {
+            await handleMatchmakingJoin(req, res, corsHeaders);
+            return;
+        }
+        if (pathName === '/api/matchmaking/cancel' && method === 'POST') {
+            await handleMatchmakingCancel(req, res, corsHeaders);
+            return;
+        }
+        if (pathName === '/api/matchmaking/status' && method === 'GET') {
+            await handleMatchmakingStatus(req, res, corsHeaders);
             return;
         }
 
@@ -1475,10 +1767,20 @@ function initDatabase(dbPath) {
             updated_at INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS salon_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_code TEXT NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            pseudo TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
         CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
         CREATE INDEX IF NOT EXISTS idx_event_players_event_id ON event_players(event_id);
         CREATE INDEX IF NOT EXISTS idx_matches_event_round ON matches(event_id, round_number, slot_index);
+        CREATE INDEX IF NOT EXISTS idx_salon_messages_event ON salon_messages(event_code, created_at DESC);
     `);
 
     ensureSqliteColumn(db, 'users', 'avatar_url', "TEXT NOT NULL DEFAULT ''");
