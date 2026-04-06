@@ -3962,6 +3962,8 @@
                     : 0;
                 this.turnDeadlineTs = null;
                 this.turnTickerId = null;
+                this.pendingNetworkMove = null;
+                this.awaitingRemoteTurnSync = false;
                 this.endReason = 'board';
                 this.timedOutPlayerIndex = null;
 
@@ -4028,6 +4030,8 @@
                 });
                 moveHistory = [];
                 this.stopTurnTimer();
+                this.pendingNetworkMove = null;
+                this.awaitingRemoteTurnSync = false;
                 this.isGravityAnimating = false;
                 if (this.gravityFinalizeTimeoutId) {
                     clearTimeout(this.gravityFinalizeTimeoutId);
@@ -4299,6 +4303,80 @@
                 return this.obstacleEnabled && this.obstacles.has(pointKey);
             }
 
+            sanitizePlayers(rawPlayers = []) {
+                const fallbackColors = ['#328DCB', '#FF4081', '#10B981', '#F59E0B'];
+                const source = Array.isArray(rawPlayers) && rawPlayers.length > 0
+                    ? rawPlayers
+                    : (Array.isArray(this.players) && this.players.length > 0 ? this.players : [{}, {}]);
+
+                return source.map((player, index) => ({
+                    ...player,
+                    name: normalizePlayerName(player?.name, `Joueur ${index + 1}`),
+                    color: sanitizeHexColor(player?.color, fallbackColors[index] || '#328DCB'),
+                    score: 0,
+                    boxCounter: 0
+                }));
+            }
+
+            buildValidatedPointsMap(entries, playersCount = this.players.length) {
+                const validatedPoints = new Map();
+                if (!Array.isArray(entries)) {
+                    return validatedPoints;
+                }
+
+                entries.forEach((entry) => {
+                    if (!Array.isArray(entry) || entry.length < 2) return;
+
+                    const rawKey = String(entry[0] ?? '');
+                    const ownerIndex = Number.parseInt(entry[1], 10);
+                    const [x, y] = rawKey.split(',').map(Number);
+                    if (!Number.isInteger(x) || !Number.isInteger(y)) return;
+                    if (x < 0 || x > this.size || y < 0 || y > this.size) return;
+                    if (!Number.isInteger(ownerIndex) || ownerIndex < 0 || ownerIndex >= playersCount) return;
+
+                    const pointKey = `${x},${y}`;
+                    if (this.isObstacleKey(pointKey)) return;
+                    validatedPoints.set(pointKey, ownerIndex);
+                });
+
+                return validatedPoints;
+            }
+
+            getCompletedBoxOwnerAt(x, y, pointsMap = this.points) {
+                if (!this.isValidPosition(x, y)) return null;
+
+                const pointKeys = [
+                    `${x},${y}`, `${x + 1},${y}`,
+                    `${x},${y + 1}`, `${x + 1},${y + 1}`
+                ];
+
+                if (pointKeys.some((key) => this.isObstacleKey(key))) return null;
+                if (!pointKeys.every((key) => pointsMap.has(key))) return null;
+
+                const playerIndices = pointKeys.map((key) => pointsMap.get(key));
+                const firstPlayer = playerIndices[0];
+                if (!Number.isInteger(firstPlayer)) return null;
+
+                return playerIndices.every((playerIndex) => playerIndex === firstPlayer)
+                    ? firstPlayer
+                    : null;
+            }
+
+            rebuildBoxesFromPoints(pointsMap = this.points) {
+                const canonicalBoxes = new Map();
+
+                for (let y = 0; y < this.size; y += 1) {
+                    for (let x = 0; x < this.size; x += 1) {
+                        const ownerIndex = this.getCompletedBoxOwnerAt(x, y, pointsMap);
+                        if (ownerIndex !== null) {
+                            canonicalBoxes.set(`${x},${y}`, ownerIndex);
+                        }
+                    }
+                }
+
+                return canonicalBoxes;
+            }
+
             getTotalPlayablePoints() {
                 const totalPoints = (this.size + 1) * (this.size + 1);
                 const blockedPoints = this.obstacleEnabled ? this.obstacles.size : 0;
@@ -4320,6 +4398,9 @@
                     if (this.isGravityAnimating) {
                         return false;
                     }
+                    if (this.pendingNetworkMove) {
+                        return false;
+                    }
                     const localIndices = getLocalPlayerIndices(this.players.length);
                     return localIndices.includes(this.currentPlayerIndex);
                 }
@@ -4338,7 +4419,11 @@
                 return Boolean(
                     this.blitzEnabled &&
                     bluetoothConnection &&
-                    (!connectionStatus.connected || !networkMatchState.started)
+                    (
+                        this.awaitingRemoteTurnSync ||
+                        !connectionStatus.connected ||
+                        !networkMatchState.started
+                    )
                 );
             }
 
@@ -4361,9 +4446,13 @@
 
                 if (this.shouldPauseBlitzTimer()) {
                     if (turnTimer) {
-                        turnTimer.textContent = connectionStatus.connected && !networkMatchState.started
-                            ? 'Blitz en attente du demarrage...'
-                            : 'Blitz en attente de connexion...';
+                        turnTimer.textContent = this.awaitingRemoteTurnSync
+                            ? 'Blitz en attente de synchronisation...'
+                            : (
+                                connectionStatus.connected && !networkMatchState.started
+                                    ? 'Blitz en attente du demarrage...'
+                                    : 'Blitz en attente de connexion...'
+                            );
                         turnTimer.classList.remove('urgent');
                     }
                     if (blitzCountdown) {
@@ -4493,6 +4582,8 @@
 
                 this.gameOver = true;
                 this.isGravityAnimating = false;
+                this.pendingNetworkMove = null;
+                this.awaitingRemoteTurnSync = false;
                 if (this.gravityFinalizeTimeoutId) {
                     clearTimeout(this.gravityFinalizeTimeoutId);
                     this.gravityFinalizeTimeoutId = null;
@@ -4547,6 +4638,8 @@
                     this.gravityFinalizeTimeoutId = null;
                 }
                 this.isGravityAnimating = false;
+                this.pendingNetworkMove = null;
+                this.awaitingRemoteTurnSync = false;
 
                 if (snapshot.size !== undefined) {
                     this.size = normalizeGridSize(snapshot.size);
@@ -4633,10 +4726,14 @@
                 } else if (!this.obstacleEnabled) {
                     this.obstacles.clear();
                 }
-                this.points = new Map(snapshot.points);
-                this.boxes = new Map(snapshot.boxes);
-                this.currentPlayerIndex = snapshot.currentPlayerIndex;
-                this.players = snapshot.players.map(player => ({ ...player }));
+                this.players = this.sanitizePlayers(snapshot.players);
+                this.points = this.buildValidatedPointsMap(snapshot.points, this.players.length);
+                this.boxes = this.rebuildBoxesFromPoints(this.points);
+                this.currentPlayerIndex = Number.isInteger(snapshot.currentPlayerIndex) &&
+                    snapshot.currentPlayerIndex >= 0 &&
+                    snapshot.currentPlayerIndex < this.players.length
+                    ? snapshot.currentPlayerIndex
+                    : 0;
                 this.gameOver = Boolean(snapshot.gameOver);
                 this.endReason = snapshot.endReason || 'board';
                 this.timedOutPlayerIndex = Number.isInteger(snapshot.timedOutPlayerIndex)
@@ -4645,8 +4742,8 @@
 
                 const restoredRemainingMs = Number.parseInt(snapshot.turnRemainingMs, 10);
                 if (this.blitzEnabled && !this.gameOver) {
-                    const safeRemaining = Number.isFinite(restoredRemainingMs) && restoredRemainingMs > 0
-                        ? restoredRemainingMs
+                    const safeRemaining = Number.isFinite(restoredRemainingMs)
+                        ? Math.max(0, restoredRemainingMs)
                         : this.turnDurationMs;
                     this.turnDeadlineTs = Date.now() + safeRemaining;
                 } else {
@@ -4753,13 +4850,38 @@
                 if (this.isObstacleKey(pointKey)) return;
                 if (this.points.has(pointKey)) return;
 
+                const actingPlayerIndex = forcedPlayerIndex !== null ? forcedPlayerIndex : this.currentPlayerIndex;
+
+                if (bluetoothConnection && !isHost && source === 'local') {
+                    if (this.pendingNetworkMove) return;
+
+                    const sent = await sendBluetoothData({
+                        type: 'move',
+                        move: { x, y },
+                        playerIndex: actingPlayerIndex
+                    });
+                    if (!sent) {
+                        showToast('Coup non envoye: connexion WebRTC indisponible.', 'error');
+                        return;
+                    }
+
+                    this.pendingNetworkMove = {
+                        x,
+                        y,
+                        pointKey,
+                        playerIndex: actingPlayerIndex,
+                        sentAt: Date.now()
+                    };
+                    this.updateUI();
+                    return;
+                }
+
                 moveHistory.push(this.createSnapshot());
                 const undoButton = document.getElementById('undoButton');
                 if (undoButton) {
                     undoButton.disabled = Boolean(bluetoothConnection) || moveHistory.length === 0;
                 }
 
-                const actingPlayerIndex = forcedPlayerIndex !== null ? forcedPlayerIndex : this.currentPlayerIndex;
                 const currentPlayer = this.players[actingPlayerIndex];
                 this.points.set(pointKey, actingPlayerIndex);
 
@@ -4852,20 +4974,8 @@
             }
 
             checkBox(x, y) {
-                const pointKeys = [
-                    `${x},${y}`, `${x + 1},${y}`,
-                    `${x},${y + 1}`, `${x + 1},${y + 1}`
-                ];
-
-                if (pointKeys.some(key => this.isObstacleKey(key))) return false;
-                if (!pointKeys.every(key => this.points.has(key))) return false;
-                if (this.boxes.has(`${x},${y}`)) return false;
-
-
-                const playerIndices = pointKeys.map(key => this.points.get(key));
-                const firstPlayer = playerIndices[0];
-
-                return playerIndices.every(player => player === firstPlayer);
+                return this.getCompletedBoxOwnerAt(x, y, this.points) !== null &&
+                    !this.boxes.has(`${x},${y}`);
             }
 
             canPlayerCompleteBox(x, y, playerIndex) {
@@ -5177,6 +5287,7 @@
                 this.gravityFinalizeTimeoutId = setTimeout(async () => {
                     if (window.game !== this) return;
                     try {
+                        const shiftedBoxKeys = new Set(this.boxes.keys());
                         let newBoxesCount = 0;
                         for (let y = 0; y < this.size; y++) {
                             for (let x = 0; x < this.size; x++) {
@@ -5193,6 +5304,14 @@
                                 }
                             }
                         }
+
+                        const canonicalBoxes = this.rebuildBoxesFromPoints(this.points);
+                        const canonicalNewBoxesCount = Array.from(canonicalBoxes.keys())
+                            .filter((boxKey) => !shiftedBoxKeys.has(boxKey)).length;
+                        this.boxes = canonicalBoxes;
+                        this.renderBoardState();
+                        this.updateUI();
+                        newBoxesCount = Math.max(newBoxesCount, canonicalNewBoxesCount);
 
                         if (newBoxesCount > 0 && soundEnabled) {
                             if (newBoxesCount > 1) playSound('combo');
@@ -5532,6 +5651,12 @@
                                 : 'En attente du lancement par l hote.',
                             persistent: true
                         };
+                    }
+                    if (this.pendingNetworkMove) {
+                        return { text: 'Validation du coup par l hote...', persistent: true };
+                    }
+                    if (this.awaitingRemoteTurnSync) {
+                        return { text: 'Synchronisation du chrono en cours...', persistent: true };
                     }
                     if (!this.isLocalTurn()) {
                         return { text: 'Attendez le tour adverse.', persistent: false };
@@ -5941,6 +6066,7 @@
         const AUTO_RESYNC_STALE_THRESHOLD = 7000;
         const AUTO_RESYNC_REQUEST_COOLDOWN = 3200;
         const AUTO_RESYNC_TICK_INTERVAL = 1000;
+        const PENDING_REMOTE_MOVE_GRACE_MS = 2200;
         const SIGNALING_URL_STORAGE_KEY = 'points.webrtc.signalingUrl';
         const RECENT_SESSION_CODES_STORAGE_KEY = 'points.webrtc.recentSessionCodes.v1';
         const RECENT_SESSION_CODES_MAX_ITEMS = 8;
@@ -6011,6 +6137,8 @@
             lastStep: null
         };
         let turnHintHideTimeoutId = null;
+        let outboundGameStateSequence = 0;
+        let lastAppliedGameStateSequence = 0;
 
         function clearTurnHintHideTimer() {
             if (turnHintHideTimeoutId) {
@@ -6790,6 +6918,12 @@
                 return;
             }
 
+            // Si le jeu est déjà démarré, retourner à la vue du jeu
+            if (networkMatchState.started && window.game && !window.game.gameOver) {
+                showGameView();
+                return;
+            }
+
             if (window.game?.gameOver) {
                 if (isHost && networkMatchState.hostReady && networkMatchState.guestReady) {
                     const launched = await startNetworkMatchCountdown({ broadcast: true });
@@ -6833,7 +6967,10 @@
                         showToast(`En attente joueurs (${readyGuests}/${requiredGuests}).`, 'info');
                         return;
                     }
-                    await startNetworkMatchCountdown({ broadcast: true });
+                    const launched = await startNetworkMatchCountdown({ broadcast: true });
+                    if (!launched) {
+                        showToast('Impossible de lancer le decompte.', 'error');
+                    }
                     return;
                 }
 
@@ -7042,8 +7179,13 @@
         }
 
         async function finalizeNetworkMatchStart(isHostFinalization) {
-            if (networkMatchState.started) return;
+            if (networkMatchState.started) {
+                console.warn('Match already started, skipping finalization');
+                return;
+            }
 
+            console.log('Finalizing network match start', { isHostFinalization, isHost });
+            
             networkMatchState.started = true;
             networkMatchState.hostReady = true;
             networkMatchState.guestReady = true;
@@ -7060,11 +7202,15 @@
             if (window.game) {
                 showGameView();
                 if (window.game.gameOver) {
+                    console.log('Initializing new game');
                     window.game.initializeGame();
                 } else {
+                    console.log('Starting turn timer');
                     window.game.startTurnTimer(true);
                     window.game.updateUI();
                 }
+            } else {
+                console.error('No game instance found!');
             }
 
             if (!isHostFinalization || !connectionStatus.connected) {
@@ -7080,7 +7226,10 @@
 
         function startLocalMatchCountdown(durationMs, isHostFinalization) {
             abortMatchStartCountdown();
-            if (networkMatchState.started) return;
+            if (networkMatchState.started) {
+                console.warn('Match already started, skipping countdown');
+                return;
+            }
             if (window.game) {
                 showGameView();
             }
@@ -7122,12 +7271,21 @@
         }
 
         async function startNetworkMatchCountdown({ durationMs = MATCH_START_COUNTDOWN_MS, broadcast = false } = {}) {
-            if (!bluetoothConnection || !connectionStatus.connected) return false;
-            if (networkMatchState.started || matchStartCountdown.active || matchStartCountdown.starting) return false;
+            if (!bluetoothConnection || !connectionStatus.connected) {
+                console.warn('Cannot start countdown: no connection');
+                return false;
+            }
+            if (networkMatchState.started || matchStartCountdown.active || matchStartCountdown.starting) {
+                console.warn('Cannot start countdown: already started or active');
+                return false;
+            }
             if (isHost) {
                 refreshHostPeerAssignments();
             }
-            if (isHost && !networkMatchState.guestReady) return false;
+            if (isHost && !networkMatchState.guestReady) {
+                console.warn('Cannot start countdown: guests not ready');
+                return false;
+            }
 
             const safeDuration = Math.max(1000, Number.parseInt(durationMs, 10) || MATCH_START_COUNTDOWN_MS);
             matchStartCountdown.starting = true;
@@ -7838,7 +7996,15 @@
                 rematchLocalReady = false;
                 rematchReadyPeerIds.clear();
                 if (window.game && !window.game.gameOver) {
-                    window.game.startTurnTimer(true);
+                    if (isHost) {
+                        window.game.awaitingRemoteTurnSync = false;
+                        window.game.startTurnTimer(true);
+                    } else {
+                        window.game.awaitingRemoteTurnSync = Boolean(window.game.blitzEnabled);
+                        window.game.stopTurnTimer();
+                        window.game.turnDeadlineTs = null;
+                        window.game.refreshTurnTimerUI();
+                    }
                 }
             }
 
@@ -8231,6 +8397,14 @@
                 latencyQuality: 'unknown'
             });
             renderLobbyStatus();
+        }
+
+        function getEstimatedInboundSyncLatencyMs() {
+            const latencyMs = Number.parseInt(connectionStatus.latencyMs, 10);
+            if (!Number.isFinite(latencyMs) || latencyMs <= 0) {
+                return 0;
+            }
+            return Math.max(0, Math.round(latencyMs / 2));
         }
 
         async function sleepWithProgress(durationMs, onTick) {
@@ -9098,6 +9272,8 @@
                 pendingDataChannelReady.reject(createBluetoothError('Connexion interrompue.'));
             }
             pendingDataChannelReady = null;
+            outboundGameStateSequence = 0;
+            lastAppliedGameStateSequence = 0;
             touchBluetoothActivity();
         }
 
@@ -9435,88 +9611,28 @@
                 return;
             }
 
-            reconnectInProgress = true;
+            // Désactivation de la reconnexion automatique
+            // L'utilisateur doit maintenant cliquer manuellement sur le bouton de reconnexion
             stopBluetoothHeartbeat();
             resetBluetoothTransportState();
             resetNetworkMatchState();
-            updateWebRTCActionButtons();
-
-            const sessionCode = sanitizeSessionCode(
-                bluetoothConnection.sessionCode || bluetoothSession.code || bluetoothSession.expectedCode || ''
-            );
-            if (!sessionCode) {
-                reconnectInProgress = false;
-                updateConnectionStatus({
-                    connected: false,
-                    connecting: false,
-                    reconnecting: false,
-                    error: 'Code de session manquant',
-                    latencyMs: null,
-                    latencyQuality: 'unknown',
-                    reconnectAttempt: 0,
-                    reconnectTotal: 0,
-                    nextRetryInMs: 0,
-                    statusDetail: ''
-                });
-                return;
-            }
-
+            
             updateConnectionStatus({
                 connected: false,
                 connecting: false,
-                reconnecting: true,
-                error: null,
+                reconnecting: false,
+                error: 'Connexion perdue',
                 latencyMs: null,
                 latencyQuality: 'unknown',
                 reconnectAttempt: 0,
-                reconnectTotal: RECONNECTION_ATTEMPTS,
-                nextRetryInMs: RECONNECTION_DELAY,
-                statusDetail: 'Reprise automatique active.'
+                reconnectTotal: 0,
+                nextRetryInMs: 0,
+                statusDetail: 'Cliquez sur le bouton de reconnexion pour retablir la connexion.'
             });
-
-            for (let attempts = 0; attempts < RECONNECTION_ATTEMPTS; attempts++) {
-                try {
-                    const attemptNumber = attempts + 1;
-                    await sleepWithProgress(RECONNECTION_DELAY, (remainingMs) => {
-                        updateConnectionStatus({
-                            reconnecting: true,
-                            reconnectAttempt: attemptNumber,
-                            reconnectTotal: RECONNECTION_ATTEMPTS,
-                            nextRetryInMs: remainingMs,
-                            statusDetail: 'Reprise automatique active.'
-                        });
-                    });
-
-                    resetPeerConnection(false);
-                    bluetoothConnection.sessionCode = sessionCode;
-                    bluetoothConnection.role = isHost ? 'host' : 'guest';
-                    bluetoothConnection.peerReady = false;
-                    bluetoothConnection.pendingIceCandidates = [];
-
-                    await connectSignalingSocket(sessionCode);
-                    if (!isHost) {
-                        setupPeerConnectionIfNeeded('host');
-                    } else {
-                        refreshHostPeerAssignments();
-                    }
-                    await waitForDataChannelOpen();
-                    bluetoothConnection.listenersAttached = true;
-                    await markConnectionReady();
-
-                    reconnectInProgress = false;
-                    updateConnectionStatus({
-                        reconnectAttempt: 0,
-                        reconnectTotal: 0,
-                        nextRetryInMs: 0,
-                        statusDetail: 'Session stable.'
-                    });
-                    showToast('Connexion WebRTC retablie.', 'success');
-                    return;
-                } catch (error) {
-                    console.log(`Echec de la tentative ${attempts + 1}:`, error);
-                }
-            }
-
+            
+            updateWebRTCActionButtons();
+            showToast('Connexion perdue. Cliquez sur le bouton de reconnexion.', 'error', 4000);
+            
             reconnectInProgress = false;
             const finalError = 'Reconnexion impossible';
             const finalDetail = 'Echec de la reprise automatique.';
@@ -9840,7 +9956,7 @@
             }, { targetId });
         }
 
-        async function handleRemoteMove(move, targetId = 'host', forcedPlayerIndex = null) {
+        async function handleRemoteMove(move, targetId = 'host', forcedPlayerIndex = null, stateSequence = null) {
             const normalizedMove = normalizeRemoteMove(move);
             if (!window.game) {
                 if (isHost && targetId && targetId !== 'host') {
@@ -9993,12 +10109,33 @@
                 return;
             }
 
+            if (!isHost && Number.isFinite(Number(stateSequence))) {
+                lastAppliedGameStateSequence = Math.max(
+                    lastAppliedGameStateSequence,
+                    Number.parseInt(stateSequence, 10)
+                );
+            }
+
             if (isHost) {
                 await sendBluetoothData({
                     type: 'move',
                     move: normalizedMove,
-                    playerIndex: actingPlayerIndex
-                }, { excludeTargetId: targetId });
+                    playerIndex: actingPlayerIndex,
+                    stateSequence: ++outboundGameStateSequence
+                });
+            } else if (window.game.pendingNetworkMove) {
+                const pendingMove = window.game.pendingNetworkMove;
+                if (
+                    pendingMove.x === normalizedMove.x &&
+                    pendingMove.y === normalizedMove.y &&
+                    pendingMove.playerIndex === actingPlayerIndex
+                ) {
+                    window.game.pendingNetworkMove = null;
+                    window.game.awaitingRemoteTurnSync = false;
+                    if (typeof window.game.updateUI === 'function') {
+                        window.game.updateUI();
+                    }
+                }
             }
         }
 
@@ -10019,7 +10156,8 @@
                     await handleRemoteMove(
                         data.move,
                         targetId,
-                        Number.parseInt(data.playerIndex, 10)
+                        Number.parseInt(data.playerIndex, 10),
+                        Number.parseInt(data.stateSequence, 10)
                     );
                     break;
                 case 'sessionHello':
@@ -10210,12 +10348,16 @@
                     break;
                 case 'moveReject':
                     if (!isHost) {
+                        if (window.game) {
+                            window.game.pendingNetworkMove = null;
+                            window.game.awaitingRemoteTurnSync = false;
+                        }
                         const reason = String(data.reason || '');
                         const fallbackMessage = getMoveRejectMessage(reason);
                         const rejectMessage = String(data.message || '').trim() || fallbackMessage;
                         showToast(rejectMessage, 'info', 2600);
                         if (data.gameState) {
-                            syncGameState(data.gameState);
+                            syncGameState(data.gameState, { forceApply: true });
                         } else {
                             await sendBluetoothData({ type: 'requestSync' });
                         }
@@ -10319,9 +10461,43 @@
             return sentCount > 0;
         }
 
-        function syncGameState(gameState) {
+        function syncGameState(gameState, { forceApply = false } = {}) {
             if (!window.game || !gameState) return;
+            const incomingSequence = Number.parseInt(gameState.syncSequence, 10);
+            if (!isHost && Number.isFinite(incomingSequence) && incomingSequence < lastAppliedGameStateSequence) {
+                return;
+            }
+            if (!isHost && Number.isFinite(incomingSequence)) {
+                lastAppliedGameStateSequence = incomingSequence;
+            }
+
+            if (!isHost && !forceApply && window.game.pendingNetworkMove) {
+                const pendingMove = window.game.pendingNetworkMove;
+                const includesPendingPoint = Array.isArray(gameState.points) && gameState.points.some((entry) =>
+                    Array.isArray(entry) &&
+                    String(entry[0] ?? '') === pendingMove.pointKey &&
+                    Number.parseInt(entry[1], 10) === pendingMove.playerIndex
+                );
+                const sameTurnStillPending = Number.parseInt(gameState.currentPlayerIndex, 10) === pendingMove.playerIndex;
+                const pendingMoveAgeMs = Math.max(0, Date.now() - Number(pendingMove.sentAt || 0));
+                if (
+                    !includesPendingPoint &&
+                    sameTurnStillPending &&
+                    !Boolean(gameState.gameOver) &&
+                    pendingMoveAgeMs < PENDING_REMOTE_MOVE_GRACE_MS
+                ) {
+                    return;
+                }
+            }
             lastSyncReceivedAt = Date.now();
+
+            const estimatedLatencyMs = !isHost && Boolean(gameState.blitzEnabled)
+                ? getEstimatedInboundSyncLatencyMs()
+                : 0;
+            const syncedRemainingMs = Number.parseInt(gameState.turnRemainingMs, 10);
+            const adjustedTurnRemainingMs = Number.isFinite(syncedRemainingMs)
+                ? Math.max(0, syncedRemainingMs - estimatedLatencyMs)
+                : gameState.turnRemainingMs;
 
             if (!isHost) {
                 const syncedCount = normalizeOnlinePlayersCount(
@@ -10370,7 +10546,7 @@
                 gameOver: Boolean(gameState.gameOver),
                 blitzEnabled: Boolean(gameState.blitzEnabled),
                 turnDurationMs: gameState.turnDurationMs,
-                turnRemainingMs: gameState.turnRemainingMs,
+                turnRemainingMs: adjustedTurnRemainingMs,
                 gravityEnabled: Boolean(gameState.gravityEnabled),
                 gravityDirection: gameState.gravityDirection,
                 movesUntilShiftCount: gameState.movesUntilShiftCount,
@@ -10411,6 +10587,7 @@
                 currentPlayerIndex: window.game.currentPlayerIndex,
                 players: window.game.players.map(player => ({ ...player })),
                 gameOver: window.game.gameOver,
+                syncSequence: ++outboundGameStateSequence,
                 blitzEnabled: window.game.blitzEnabled,
                 turnDurationMs: window.game.turnDurationMs,
                 turnRemainingMs: window.game.getRemainingTurnMs(),
@@ -10723,7 +10900,109 @@
                 return;
             }
 
-            handleDisconnection();
+            // Lancer la reconnexion manuelle
+            attemptManualReconnection();
+        }
+
+        async function attemptManualReconnection() {
+            if (reconnectInProgress) return;
+            
+            const sessionCode = sanitizeSessionCode(
+                bluetoothConnection.sessionCode || bluetoothSession.code || bluetoothSession.expectedCode || ''
+            );
+            if (!sessionCode) {
+                updateConnectionStatus({
+                    connected: false,
+                    connecting: false,
+                    reconnecting: false,
+                    error: 'Code de session manquant',
+                    latencyMs: null,
+                    latencyQuality: 'unknown',
+                    reconnectAttempt: 0,
+                    reconnectTotal: 0,
+                    nextRetryInMs: 0,
+                    statusDetail: ''
+                });
+                showToast('Code de session manquant.', 'error');
+                return;
+            }
+
+            reconnectInProgress = true;
+            stopBluetoothHeartbeat();
+            resetBluetoothTransportState();
+            resetNetworkMatchState();
+            updateWebRTCActionButtons();
+
+            updateConnectionStatus({
+                connected: false,
+                connecting: false,
+                reconnecting: true,
+                error: null,
+                latencyMs: null,
+                latencyQuality: 'unknown',
+                reconnectAttempt: 0,
+                reconnectTotal: RECONNECTION_ATTEMPTS,
+                nextRetryInMs: RECONNECTION_DELAY,
+                statusDetail: 'Reconnexion manuelle en cours.'
+            });
+
+            for (let attempts = 0; attempts < RECONNECTION_ATTEMPTS; attempts++) {
+                try {
+                    const attemptNumber = attempts + 1;
+                    await sleepWithProgress(RECONNECTION_DELAY, (remainingMs) => {
+                        updateConnectionStatus({
+                            reconnecting: true,
+                            reconnectAttempt: attemptNumber,
+                            reconnectTotal: RECONNECTION_ATTEMPTS,
+                            nextRetryInMs: remainingMs,
+                            statusDetail: 'Reconnexion manuelle en cours.'
+                        });
+                    });
+
+                    resetPeerConnection(false);
+                    bluetoothConnection.sessionCode = sessionCode;
+                    bluetoothConnection.role = isHost ? 'host' : 'guest';
+                    bluetoothConnection.peerReady = false;
+                    bluetoothConnection.pendingIceCandidates = [];
+
+                    await connectSignalingSocket(sessionCode);
+                    if (!isHost) {
+                        setupPeerConnectionIfNeeded('host');
+                    } else {
+                        refreshHostPeerAssignments();
+                    }
+                    await waitForDataChannelOpen();
+                    bluetoothConnection.listenersAttached = true;
+                    await markConnectionReady();
+
+                    reconnectInProgress = false;
+                    updateConnectionStatus({
+                        reconnectAttempt: 0,
+                        reconnectTotal: 0,
+                        nextRetryInMs: 0,
+                        statusDetail: 'Session stable.'
+                    });
+                    showToast('Connexion WebRTC retablie.', 'success');
+                    return;
+                } catch (error) {
+                    console.log(`Echec de la tentative ${attempts + 1}:`, error);
+                }
+            }
+
+            reconnectInProgress = false;
+            updateConnectionStatus({
+                connected: false,
+                connecting: false,
+                reconnecting: false,
+                error: 'Echec de la reconnexion',
+                latencyMs: null,
+                latencyQuality: 'unknown',
+                reconnectAttempt: 0,
+                reconnectTotal: 0,
+                nextRetryInMs: 0,
+                statusDetail: 'Toutes les tentatives ont echoue.'
+            });
+            showToast('Echec de la reconnexion. Verifiez votre connexion.', 'error');
         }
 
         function showRules() {
